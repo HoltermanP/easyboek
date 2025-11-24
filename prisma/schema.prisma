@@ -1,0 +1,237 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  role      String   @default("user") // "user" | "admin"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companies Company[]
+
+  @@map("users")
+}
+
+model Company {
+  id         String   @id @default(cuid())
+  ownerId    String
+  name       String
+  year       Int      @default(2025) // Jaar van de administratie
+  kvkNumber  String?
+  btwNumber  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner            User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings         Booking[]
+  documents        TransactionDocument[]
+  invoices         Invoice[]
+  customers        Customer[]
+  vatPeriods       VatPeriod[]
+  ledgerAccounts   LedgerAccount[]
+  recurringBookings RecurringBooking[]
+  taxRules         TaxRules?
+
+  @@unique([ownerId, year]) // Eén administratie per jaar per gebruiker
+  @@map("companies")
+}
+
+model TransactionDocument {
+  id             String   @id @default(cuid())
+  companyId      String
+  url            String
+  originalFilename String
+  type          String   // "invoice" | "receipt" | "other"
+  ocrText       String?
+  aiCategory    String?
+  status        String   @default("uploaded") // "uploaded" | "processed" | "booked"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_documents")
+}
+
+model LedgerAccount {
+  id        String   @id @default(cuid())
+  companyId String
+  code      String
+  name      String
+  type      String   // "balance" | "result"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  debitBookings     Booking[] @relation("DebitAccount")
+  creditBookings    Booking[] @relation("CreditAccount")
+  recurringDebitBookings  RecurringBooking[] @relation("RecurringDebitAccount")
+  recurringCreditBookings RecurringBooking[] @relation("RecurringCreditAccount")
+
+  @@unique([companyId, code])
+  @@map("ledger_accounts")
+}
+
+model Booking {
+  id              String   @id @default(cuid())
+  companyId       String
+  date            DateTime
+  description     String
+  debitAccountId  String
+  creditAccountId String
+  amount          Decimal  @db.Decimal(10, 2)
+  vatCode         String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  debitAccount    LedgerAccount @relation("DebitAccount", fields: [debitAccountId], references: [id])
+  creditAccount   LedgerAccount @relation("CreditAccount", fields: [creditAccountId], references: [id])
+
+  @@map("bookings")
+}
+
+model Customer {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  email       String?
+  address     String?
+  city        String?
+  postalCode  String?
+  country     String?  @default("NL")
+  kvkNumber   String?
+  btwNumber   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices    Invoice[]
+
+  @@map("customers")
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  companyId   String
+  customerId String
+  number      String
+  date        DateTime
+  dueDate     DateTime
+  items       Json     // Array of { description, quantity, price, vat }
+  total       Decimal  @db.Decimal(10, 2)
+  vatTotal    Decimal  @db.Decimal(10, 2)
+  status      String   @default("draft") // "draft" | "sent" | "paid" | "overdue"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer @relation(fields: [customerId], references: [id])
+
+  @@unique([companyId, number])
+  @@map("invoices")
+}
+
+model VatPeriod {
+  id        String   @id @default(cuid())
+  companyId String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("open") // "open" | "ready" | "filed"
+  vatAmount Decimal? @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("vat_periods")
+}
+
+model RecurringBooking {
+  id              String   @id @default(cuid())
+  companyId       String
+  description     String
+  debitAccountId  String
+  creditAccountId String
+  amount          Decimal  @db.Decimal(10, 2)
+  vatCode         String?
+  frequency       String   // "monthly" | "quarterly" | "yearly"
+  dayOfMonth      Int      // Dag van de maand (1-31)
+  startDate       DateTime
+  endDate         DateTime? // Optioneel: wanneer stoppen
+  isActive        Boolean  @default(true)
+  lastProcessed   DateTime? // Laatste keer dat deze is verwerkt
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  debitAccount    LedgerAccount @relation("RecurringDebitAccount", fields: [debitAccountId], references: [id])
+  creditAccount   LedgerAccount @relation("RecurringCreditAccount", fields: [creditAccountId], references: [id])
+
+  @@map("recurring_bookings")
+}
+
+model TaxRules {
+  id              String   @id @default(cuid())
+  companyId       String   @unique
+  year            Int      // Jaar waarop deze regels van toepassing zijn
+  
+  // BTW tarieven
+  vatStandardRate Decimal  @db.Decimal(5, 2) // Standaard BTW tarief (bijv. 21%)
+  vatReducedRate  Decimal  @db.Decimal(5, 2) // Verlaagd BTW tarief (bijv. 9%)
+  vatZeroRate     Decimal  @default(0) @db.Decimal(5, 2) // Nul tarief
+  
+  // Inkomstenbelasting tarieven (voor ZZP)
+  incomeTaxRate1  Decimal? @db.Decimal(5, 2) // Eerste schijf
+  incomeTaxRate2  Decimal? @db.Decimal(5, 2) // Tweede schijf
+  incomeTaxRate3  Decimal? @db.Decimal(5, 2) // Derde schijf
+  incomeTaxRate4  Decimal? @db.Decimal(5, 2) // Vierde schijf
+  
+  // Inkomstenbelasting schijven (in euro's)
+  incomeTaxBracket1 Decimal? @db.Decimal(12, 2) // Eerste schijf tot
+  incomeTaxBracket2 Decimal? @db.Decimal(12, 2) // Tweede schijf tot
+  incomeTaxBracket3 Decimal? @db.Decimal(12, 2) // Derde schijf tot
+  
+  // Algemene heffingskorting
+  generalTaxCredit Decimal? @db.Decimal(10, 2)
+  
+  // Arbeidskorting
+  employmentTaxCredit Decimal? @db.Decimal(10, 2)
+  
+  // Zelfstandigenaftrek
+  selfEmployedDeduction Decimal? @db.Decimal(10, 2)
+  
+  // MKB-winstvrijstelling percentage
+  smeProfitExemption Decimal? @db.Decimal(5, 2)
+  
+  // BTW aangifte frequentie
+  vatFilingFrequency String @default("quarterly") // "monthly" | "quarterly" | "yearly"
+  
+  // Extra informatie (JSON voor flexibiliteit)
+  additionalRules Json? // Voor toekomstige uitbreidingen
+  
+  // Metadata
+  source          String? // Waar komen de regels vandaan (bijv. "belastingdienst", "manual")
+  lastUpdated     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("tax_rules")
+}
+
+
+
