@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,13 +13,7 @@ export function CheckoutRedirect() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (plan && (plan === "basis" || plan === "premium")) {
-      startCheckout();
-    }
-  }, [plan]);
-
-  const startCheckout = async () => {
+  const startCheckout = useCallback(async () => {
     if (!plan) return;
 
     setLoading(true);
@@ -50,7 +44,13 @@ export function CheckoutRedirect() {
       setError(err.message || "Er is een fout opgetreden");
       setLoading(false);
     }
-  };
+  }, [plan]);
+
+  useEffect(() => {
+    if (plan && (plan === "basis" || plan === "premium")) {
+      startCheckout();
+    }
+  }, [plan, startCheckout]);
 
   if (!plan) {
     return null;

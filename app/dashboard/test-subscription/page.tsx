@@ -141,7 +141,7 @@ export default function TestSubscriptionPage() {
             • Deze pagina is alleen beschikbaar in development mode
           </p>
           <p>
-            • Test abonnementen worden automatisch als "active" gemarkeerd
+            • Test abonnementen worden automatisch als &quot;active&quot; gemarkeerd
           </p>
           <p>
             • In productie moet je een echte Stripe subscription hebben
