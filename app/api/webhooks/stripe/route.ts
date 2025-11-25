@@ -6,18 +6,20 @@ import Stripe from "stripe";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-if (!webhookSecret) {
-  throw new Error("STRIPE_WEBHOOK_SECRET is not set");
-}
-
 export async function POST(request: NextRequest) {
+  if (!stripe || !webhookSecret) {
+    return NextResponse.json(
+      { error: "Stripe is niet geconfigureerd" },
+      { status: 503 }
+    );
+  }
   const body = await request.text();
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");
 
-  if (!signature || !webhookSecret) {
+  if (!signature) {
     return NextResponse.json(
-      { error: "No signature or webhook secret" },
+      { error: "No signature" },
       { status: 400 }
     );
   }

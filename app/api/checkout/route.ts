@@ -5,6 +5,13 @@ import { getCurrentUser } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
+    if (!stripe) {
+      return NextResponse.json(
+        { error: "Stripe is niet geconfigureerd. Gebruik de test subscription pagina in development mode." },
+        { status: 503 }
+      );
+    }
+
     const user = await getCurrentUser();
     
     if (!user) {
