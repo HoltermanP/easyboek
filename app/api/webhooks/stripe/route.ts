@@ -95,7 +95,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   // Haal subscription op van Stripe
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await stripe!.subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items.data[0]?.price?.id;
 
   // Update of maak subscription aan
