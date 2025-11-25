@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateRecurringBookingForm } from "@/components/recurring/CreateRecurringBookingForm";
 
+export const dynamic = 'force-dynamic';
+
 async function getCompanyAndAccounts(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

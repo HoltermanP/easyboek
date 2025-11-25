@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeletePeriodForm } from "@/components/settings/DeletePeriodForm";
 
+export const dynamic = 'force-dynamic';
+
 async function getCompanyData(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

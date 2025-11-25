@@ -9,6 +9,8 @@ import { nl } from "date-fns/locale/nl";
 import Link from "next/link";
 import { Eye, Download } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 async function getDocuments(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

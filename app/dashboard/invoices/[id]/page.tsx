@@ -11,6 +11,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { MarkInvoicePaidButton } from "@/components/invoices/MarkInvoicePaidButton";
 
+export const dynamic = 'force-dynamic';
+
 async function getInvoice(invoiceId: string, userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

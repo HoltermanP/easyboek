@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditCustomerForm } from "@/components/customers/EditCustomerForm";
 
+export const dynamic = 'force-dynamic';
+
 async function getCustomer(customerId: string, userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

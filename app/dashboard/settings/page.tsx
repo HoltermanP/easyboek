@@ -11,6 +11,8 @@ import { Trash2 } from "lucide-react";
 import { cookies } from "next/headers";
 import { SelectCompanyForm } from "@/components/settings/SelectCompanyForm";
 
+export const dynamic = 'force-dynamic';
+
 async function getCompanyData(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

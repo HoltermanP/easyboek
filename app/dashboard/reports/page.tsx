@@ -16,6 +16,8 @@ import { ReportsBalanceSheet } from "@/components/reports/ReportsBalanceSheet";
 import { ReportsCashFlow } from "@/components/reports/ReportsCashFlow";
 import { ReportsTrends } from "@/components/reports/ReportsTrends";
 
+export const dynamic = 'force-dynamic';
+
 async function getCompany(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

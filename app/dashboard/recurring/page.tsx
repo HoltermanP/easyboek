@@ -12,6 +12,8 @@ import { getRecurringBookings } from "@/services/recurring/processRecurring";
 import { ToggleRecurringButton } from "@/components/recurring/ToggleRecurringButton";
 import { DeleteRecurringButton } from "@/components/recurring/DeleteRecurringButton";
 
+export const dynamic = 'force-dynamic';
+
 async function getCompany(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

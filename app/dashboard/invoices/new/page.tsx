@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { CreateInvoiceForm } from "@/components/invoices/CreateInvoiceForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+export const dynamic = 'force-dynamic';
+
 async function getCompanyAndCustomers(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

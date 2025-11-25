@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan");
@@ -179,6 +179,23 @@ export default function CheckoutPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Abonnement afsluiten</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Laden...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   );
 }
 

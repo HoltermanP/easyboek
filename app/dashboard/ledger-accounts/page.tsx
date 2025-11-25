@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { STANDARD_LEDGER_ACCOUNTS } from "@/lib/ledgerAccounts";
 import { LedgerAccountCode } from "@/components/ledger/LedgerAccountCode";
 
+export const dynamic = 'force-dynamic';
+
 async function getLedgerAccounts(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

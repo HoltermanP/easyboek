@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale/nl";
 
+export const dynamic = 'force-dynamic';
+
 async function getAdminData() {
   const companies = await prisma.company.findMany({
     include: {

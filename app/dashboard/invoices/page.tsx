@@ -9,6 +9,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale/nl";
 
+export const dynamic = 'force-dynamic';
+
 async function getInvoices(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

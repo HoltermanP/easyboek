@@ -7,6 +7,8 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale/nl";
 import { LedgerAccountCode } from "@/components/ledger/LedgerAccountCode";
 
+export const dynamic = 'force-dynamic';
+
 async function getBookings(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

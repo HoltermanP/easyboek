@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBookingAction } from "./actions";
 
+export const dynamic = 'force-dynamic';
+
 async function getDocument(documentId: string, userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

@@ -11,6 +11,8 @@ import { DeleteCustomerButton } from "@/components/customers/DeleteCustomerButto
 import { format } from "date-fns";
 import { nl } from "date-fns/locale/nl";
 
+export const dynamic = 'force-dynamic';
+
 async function getCustomers(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

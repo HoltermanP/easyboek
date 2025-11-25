@@ -7,6 +7,8 @@ import { nl } from "date-fns/locale/nl";
 import { LedgerAccountCode } from "@/components/ledger/LedgerAccountCode";
 import { InvoiceNotifications } from "@/components/dashboard/InvoiceNotifications";
 
+export const dynamic = 'force-dynamic';
+
 async function getDashboardData(userId: string) {
   try {
     const user = await prisma.user.findUnique({

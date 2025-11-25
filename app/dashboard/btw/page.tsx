@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format } from "date-fns";
 import { nl } from "date-fns/locale/nl";
 
+export const dynamic = 'force-dynamic';
+
 async function getVatData(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
