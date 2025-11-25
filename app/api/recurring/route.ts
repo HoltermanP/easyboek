@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await getCurrentUser();
     const body = await request.json();
 
     const {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       where: {
         id: companyId,
         owner: {
-          clerkId: user.clerkId,
+          id: user!.id,
         },
       },
     });

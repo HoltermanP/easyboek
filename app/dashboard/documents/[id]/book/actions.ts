@@ -1,12 +1,15 @@
 "use server";
 
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function createBookingAction(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
 
   const documentId = formData.get("documentId") as string;
   const companyId = formData.get("companyId") as string;

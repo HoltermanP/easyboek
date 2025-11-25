@@ -1,12 +1,15 @@
 "use server";
 
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getTaxRulesForYear } from "@/services/tax/getTaxRules";
 
 export async function createCompany(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
   
   const name = formData.get("name") as string;
   const year = formData.get("year") as string;
@@ -95,7 +98,10 @@ export async function createCompany(formData: FormData) {
 }
 
 export async function updateCompany(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
   
   const companyId = formData.get("companyId") as string;
   const name = formData.get("name") as string;
@@ -139,7 +145,10 @@ export async function updateCompany(formData: FormData) {
  * Verwijder alle data voor een bepaalde periode binnen een administratie
  */
 export async function deletePeriodData(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
   
   const companyId = formData.get("companyId") as string;
   const startDate = formData.get("startDate") as string;
@@ -222,7 +231,10 @@ export async function deletePeriodData(formData: FormData) {
  * Selecteer een administratie (sla op in cookie)
  */
 export async function selectCompany(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
   
   const companyId = formData.get("companyId") as string;
 

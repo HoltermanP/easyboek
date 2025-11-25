@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { EditCustomerForm } from "@/components/customers/EditCustomerForm";
 
 async function getCustomer(customerId: string, userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -38,8 +38,11 @@ export default async function EditCustomerPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requireAuth();
-  const data = await getCustomer(params.id, user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/dashboard/customers");
+  }
+  const data = await getCustomer(params.id, user.id);
 
   if (!data) {
     redirect("/dashboard/customers");

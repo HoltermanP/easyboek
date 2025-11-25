@@ -1,11 +1,14 @@
 "use server";
 
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function createInvoice(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
 
   const companyId = formData.get("companyId") as string;
   const customerId = formData.get("customerId") as string;
@@ -210,7 +213,10 @@ async function bookInvoice(
  * Bij betaling: Bank (1000) debet, Debiteuren (1300) credit
  */
 export async function markInvoiceAsPaid(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
   
   const invoiceId = formData.get("invoiceId") as string;
   const paymentDate = formData.get("paymentDate") as string;

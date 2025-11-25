@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,15 +6,7 @@ import { Check, X, Sparkles, Shield, Zap, FileText, Calculator, Clock } from "lu
 import Link from "next/link";
 import { ReviewsCarousel } from "@/components/reviews/ReviewsCarousel";
 
-export default async function Home() {
-  const { userId } = await auth();
-
-  // Als gebruiker ingelogd is, redirect naar dashboard
-  if (userId) {
-    redirect("/dashboard");
-  }
-
-  // Marketing pagina voor niet-ingelogde gebruikers
+export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Navigation */}
@@ -24,10 +14,7 @@ export default async function Home() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="text-2xl font-bold text-slate-900">EasyBoek</div>
           <div className="flex gap-4">
-            <Link href="/sign-in">
-              <Button variant="ghost">Inloggen</Button>
-            </Link>
-            <Link href="/sign-up">
+            <Link href="/dashboard">
               <Button>Start nu</Button>
             </Link>
           </div>
@@ -49,14 +36,14 @@ export default async function Home() {
           BTW-berekeningen en belastingaangiftes. Focus op je werk, niet op je administratie.
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/sign-up">
+          <Link href="/dashboard">
             <Button size="lg" className="text-lg px-8">
               Start nu
             </Button>
           </Link>
           <Link href="#pricing">
             <Button size="lg" variant="outline" className="text-lg px-8">
-              Bekijk abonnementen
+              Bekijk functies
             </Button>
           </Link>
         </div>
@@ -121,11 +108,11 @@ export default async function Home() {
       {/* Reviews Section */}
       <ReviewsCarousel />
 
-      {/* Pricing Section */}
+      {/* Features Section - Pricing is uitgeschakeld */}
       <section id="pricing" className="container mx-auto px-4 py-20 bg-slate-50">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-slate-900">Kies je abonnement</h2>
-          <p className="text-slate-600">Alle abonnementen worden per jaar afgenomen</p>
+          <h2 className="text-3xl font-bold mb-4 text-slate-900">Gratis te gebruiken</h2>
+          <p className="text-slate-600">Maak een gratis account aan en begin direct</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -262,7 +249,7 @@ export default async function Home() {
         <p className="text-slate-600 mb-8 max-w-xl mx-auto">
           Start vandaag nog en ervaar hoe eenvoudig boekhouden kan zijn.
         </p>
-        <Link href="/sign-up">
+        <Link href="/dashboard">
           <Button size="lg" className="text-lg px-8">
             Start nu
           </Button>
@@ -282,15 +269,15 @@ export default async function Home() {
             <div>
               <h3 className="font-bold text-lg mb-4">Product</h3>
               <ul className="space-y-2 text-sm text-slate-600">
-                <li><Link href="#pricing" className="hover:text-slate-900">Prijzen</Link></li>
-                <li><Link href="/sign-up" className="hover:text-slate-900">Gratis proberen</Link></li>
+                <li><Link href="#pricing" className="hover:text-slate-900">Functies</Link></li>
+                <li><Link href="/dashboard" className="hover:text-slate-900">Start nu</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="font-bold text-lg mb-4">Support</h3>
               <ul className="space-y-2 text-sm text-slate-600">
-                <li><Link href="/sign-in" className="hover:text-slate-900">Inloggen</Link></li>
-                <li><Link href="/sign-up" className="hover:text-slate-900">Registreren</Link></li>
+                <li><Link href="/dashboard" className="hover:text-slate-900">Dashboard</Link></li>
+                <li><Link href="/dashboard/settings" className="hover:text-slate-900">Instellingen</Link></li>
               </ul>
             </div>
           </div>

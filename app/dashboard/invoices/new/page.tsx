@@ -1,11 +1,11 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CreateInvoiceForm } from "@/components/invoices/CreateInvoiceForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 async function getCompanyAndCustomers(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -50,8 +50,16 @@ async function getCompanyAndCustomers(userId: string) {
 }
 
 export default async function NewInvoicePage() {
-  const user = await requireAuth();
-  const data = await getCompanyAndCustomers(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Nieuwe Factuur</h1>
+        <p className="text-muted-foreground">Gebruiker niet gevonden</p>
+      </div>
+    );
+  }
+  const data = await getCompanyAndCustomers(user.id);
 
   if (!data) {
     return (

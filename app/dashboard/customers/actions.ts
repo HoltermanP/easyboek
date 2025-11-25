@@ -1,11 +1,14 @@
 "use server";
 
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function createCustomer(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
   
   const companyId = formData.get("companyId") as string;
   const name = formData.get("name") as string;
@@ -25,7 +28,7 @@ export async function createCustomer(formData: FormData) {
   const company = await prisma.company.findFirst({
     where: {
       id: companyId,
-      ownerId: user.id,
+      ownerId: user!.id,
     },
   });
 
@@ -59,7 +62,10 @@ export async function createCustomer(formData: FormData) {
 }
 
 export async function updateCustomer(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
   
   const customerId = formData.get("customerId") as string;
   const name = formData.get("name") as string;
@@ -80,7 +86,7 @@ export async function updateCustomer(formData: FormData) {
     where: {
       id: customerId,
       company: {
-        ownerId: user.id,
+        ownerId: user!.id,
       },
     },
   });
@@ -115,7 +121,7 @@ export async function updateCustomer(formData: FormData) {
 }
 
 export async function deleteCustomer(formData: FormData) {
-  const user = await requireAuth();
+  const user = await getCurrentUser();
   
   const customerId = formData.get("customerId") as string;
 
@@ -128,7 +134,7 @@ export async function deleteCustomer(formData: FormData) {
     where: {
       id: customerId,
       company: {
-        ownerId: user.id,
+        ownerId: user!.id,
       },
     },
     include: {

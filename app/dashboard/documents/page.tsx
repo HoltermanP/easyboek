@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Eye, Download } from "lucide-react";
 
 async function getDocuments(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -33,8 +33,16 @@ async function getDocuments(userId: string) {
 }
 
 export default async function DocumentsPage() {
-  const user = await requireAuth();
-  const documents = await getDocuments(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Documenten</h1>
+        <p className="text-muted-foreground">Gebruiker niet gevonden</p>
+      </div>
+    );
+  }
+  const documents = await getDocuments(user.id);
 
   if (!documents) {
     return (

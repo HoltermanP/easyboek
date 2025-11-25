@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchTaxRulesFromAI } from "@/services/tax/fetchTaxRulesFromAI";
 import { revalidatePath } from "next/cache";
@@ -9,7 +9,7 @@ export async function POST(
   { params }: { params: { companyId: string } }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await getCurrentUser();
     const { companyId } = params;
 
     // Check of company bij gebruiker hoort
@@ -17,7 +17,7 @@ export async function POST(
       where: {
         id: companyId,
         owner: {
-          clerkId: user.clerkId,
+          id: user!.id,
         },
       },
       include: {

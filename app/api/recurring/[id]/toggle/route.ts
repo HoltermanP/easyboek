@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(
@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await getCurrentUser();
     const { id } = params;
 
     // Check of de herhalende boeking bestaat en bij de gebruiker hoort
@@ -16,7 +16,7 @@ export async function POST(
         id,
         company: {
           owner: {
-            clerkId: user.clerkId,
+            id: user!.id,
           },
         },
       },

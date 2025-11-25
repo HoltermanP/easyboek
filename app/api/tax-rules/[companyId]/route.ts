@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { getCompanyTaxRules } from "@/services/tax/getCompanyTaxRules";
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { companyId: string } }
 ) {
   try {
-    const user = await requireAuth();
+    const user = await getCurrentUser();
     const { companyId } = params;
 
     // Check of company bij gebruiker hoort
@@ -16,7 +16,7 @@ export async function GET(
       where: {
         id: companyId,
         owner: {
-          clerkId: user.clerkId,
+          id: user!.id,
         },
       },
     });

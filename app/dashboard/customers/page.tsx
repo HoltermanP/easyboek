@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { nl } from "date-fns/locale/nl";
 
 async function getCustomers(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -45,8 +45,19 @@ async function getCustomers(userId: string) {
 }
 
 export default async function CustomersPage() {
-  const user = await requireAuth();
-  const data = await getCustomers(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6 p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Gebruiker niet gevonden</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  const data = await getCustomers(user.id);
 
   if (!data) {
     return (

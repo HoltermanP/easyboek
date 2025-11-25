@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateVatOverview } from "@/services/btw/btw";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { nl } from "date-fns/locale/nl";
 
 async function getVatData(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -65,8 +65,16 @@ async function getVatData(userId: string) {
 }
 
 export default async function BtwPage() {
-  const user = await requireAuth();
-  const data = await getVatData(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">BTW Overzicht</h1>
+        <p className="text-muted-foreground">Gebruiker niet gevonden</p>
+      </div>
+    );
+  }
+  const data = await getVatData(user.id);
 
   if (!data) {
     return (

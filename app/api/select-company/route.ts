@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const user = await getCurrentUser();
     
-    if (!userId) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user owns the company
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
+    const userWithCompanies = await prisma.user.findUnique({
+      where: { id: user.id },
       include: {
         companies: {
           where: { id: companyId },
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!user || user.companies.length === 0) {
+    if (!userWithCompanies || userWithCompanies.companies.length === 0) {
       return NextResponse.json({ error: "Bedrijf niet gevonden" }, { status: 404 });
     }
 

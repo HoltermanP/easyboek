@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { createBookingAction } from "./actions";
 
 async function getDocument(documentId: string, userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -63,8 +63,11 @@ export default async function BookDocumentPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requireAuth();
-  const data = await getDocument(params.id, user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/dashboard/documents");
+  }
+  const data = await getDocument(params.id, user.id);
 
   if (!data) {
     redirect("/dashboard/documents");

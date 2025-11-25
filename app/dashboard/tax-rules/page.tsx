@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 async function getCompanyAndTaxRules(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -52,8 +52,20 @@ const formatCurrency = (value: number | string | Decimal | null | undefined) => 
 
 export default async function TaxRulesPage() {
   try {
-    const user = await requireAuth();
-    const companies = await getCompanyAndTaxRules(user.clerkId);
+    const user = await getCurrentUser();
+    if (!user) {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Belastingregels</h1>
+          <Card>
+            <CardHeader>
+              <CardTitle>Gebruiker niet gevonden</CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+      );
+    }
+    const companies = await getCompanyAndTaxRules(user.id);
 
     if (!companies || companies.length === 0) {
       return (

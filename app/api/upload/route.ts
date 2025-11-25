@@ -2,35 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { processOCR } from "@/services/ocr/ocr";
 import { categorizeDocument } from "@/services/ai/categorize";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const user = await getCurrentUser();
     
-    if (!userId) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get user and company
-    const user = await prisma.user.findUnique({
-      where: { clerkId: userId },
+    const userWithCompanies = await prisma.user.findUnique({
+      where: { id: user.id },
       include: {
         companies: true,
       },
     });
 
-    if (!user || user.companies.length === 0) {
+    if (!userWithCompanies || userWithCompanies.companies.length === 0) {
       return NextResponse.json(
         { error: "Geen bedrijf gevonden. Maak eerst een bedrijf aan." },
         { status: 400 }
       );
     }
 
-    const company = user.companies[0];
+    const company = userWithCompanies.companies[0];
 
     const formData = await request.formData();
     const file = formData.get("file") as File;

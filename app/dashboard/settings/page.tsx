@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { SelectCompanyForm } from "@/components/settings/SelectCompanyForm";
 
 async function getCompanyData(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         orderBy: {
@@ -27,8 +27,23 @@ async function getCompanyData(userId: string) {
 }
 
 export default async function SettingsPage() {
-  const user = await requireAuth();
-  const companies = await getCompanyData(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6 p-6">
+        <h1 className="text-3xl font-bold">Instellingen</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gebruiker niet gevonden</CardTitle>
+            <CardDescription>
+              Er is een probleem opgetreden.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  const companies = await getCompanyData(user.id);
   
   // Haal geselecteerde company op uit cookie of gebruik de eerste
   const cookieStore = await cookies();

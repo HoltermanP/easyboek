@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { DeleteRecurringButton } from "@/components/recurring/DeleteRecurringBut
 
 async function getCompany(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: true,
     },
@@ -28,8 +28,20 @@ async function getCompany(userId: string) {
 }
 
 export default async function RecurringBookingsPage() {
-  const user = await requireAuth();
-  const company = await getCompany(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Herhalende Boekingen</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gebruiker niet gevonden</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  const company = await getCompany(user.id);
 
   if (!company) {
     return (

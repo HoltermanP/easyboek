@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,35 +8,36 @@ import { LedgerAccountCode } from "@/components/ledger/LedgerAccountCode";
 import { InvoiceNotifications } from "@/components/dashboard/InvoiceNotifications";
 
 async function getDashboardData(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: {
-      companies: {
-        include: {
-          bookings: {
-            include: {
-              debitAccount: true,
-              creditAccount: true,
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        companies: {
+          include: {
+            bookings: {
+              include: {
+                debitAccount: true,
+                creditAccount: true,
+              },
             },
-          },
-          documents: true,
-          vatPeriods: {
-            where: {
-              status: "open",
+            documents: true,
+            vatPeriods: {
+              where: {
+                status: "open",
+              },
+              orderBy: {
+                endDate: "desc",
+              },
+              take: 1,
             },
-            orderBy: {
-              endDate: "desc",
-            },
-            take: 1,
           },
         },
       },
-    },
-  });
+    });
 
-  if (!user || user.companies.length === 0) {
-    return null;
-  }
+    if (!user || user.companies.length === 0) {
+      return null;
+    }
 
   const company = user.companies[0];
   const now = new Date();
@@ -122,27 +122,48 @@ async function getDashboardData(userId: string) {
     kostenBookingsThisMonth,
     kostenBookingsThisYear,
   };
+  } catch (error) {
+    console.error("Error in getDashboardData:", error);
+    // Return null zodat de UI een vriendelijke melding kan tonen
+    return null;
+  }
 }
 
 export default async function DashboardPage() {
-  const user = await requireAuth();
-  const data = await getDashboardData(user.clerkId);
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <Card>
+            <CardHeader>
+              <CardTitle>Geen gebruiker gevonden</CardTitle>
+              <CardDescription>
+                Er is een probleem opgetreden.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      );
+    }
+    const data = await getDashboardData(user.id);
 
-  if (!data) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Card>
-          <CardHeader>
-            <CardTitle>Geen bedrijf gevonden</CardTitle>
-            <CardDescription>
-              Maak eerst een bedrijf aan om te beginnen.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+    if (!data) {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <Card>
+            <CardHeader>
+              <CardTitle>Geen bedrijf gevonden</CardTitle>
+              <CardDescription>
+                Maak eerst een bedrijf aan om te beginnen.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      );
+    }
 
   return (
     <div className="space-y-6">
@@ -307,5 +328,10 @@ export default async function DashboardPage() {
       })()}
     </div>
   );
+  } catch (error) {
+    console.error("Error in DashboardPage:", error);
+    // Re-throw zodat de error boundary het kan afhandelen
+    throw error;
+  }
 }
 

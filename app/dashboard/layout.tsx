@@ -1,17 +1,13 @@
-import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 import { Sidebar } from "@/components/dashboard/Sidebar";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
+  // Haal gebruiker op (maakt automatisch demo gebruiker aan als er geen is)
+  const user = await getCurrentUser();
 
   return (
     <div className="flex h-screen">

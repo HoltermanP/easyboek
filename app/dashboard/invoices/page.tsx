@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { nl } from "date-fns/locale/nl";
 
 async function getInvoices(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -36,8 +36,20 @@ async function getInvoices(userId: string) {
 }
 
 export default async function InvoicesPage() {
-  const user = await requireAuth();
-  const invoices = await getInvoices(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Facturen</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gebruiker niet gevonden</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  const invoices = await getInvoices(user.id);
 
   if (!invoices) {
     return (
@@ -91,7 +103,7 @@ export default async function InvoicesPage() {
             </TableHeader>
             <TableBody>
               {invoices.length > 0 ? (
-                invoices.map((invoice) => (
+                invoices.map((invoice: any) => (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.number}</TableCell>
                     <TableCell>{invoice.customer.name}</TableCell>

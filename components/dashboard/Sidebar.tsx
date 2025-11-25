@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
 import {
   LayoutDashboard,
   Upload,
@@ -15,6 +14,7 @@ import {
   BarChart3,
   Repeat,
   Scale,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +88,10 @@ export function Sidebar() {
         )}
       </nav>
       <div className="border-t p-4">
-        <UserButton />
+        <div className="flex items-center gap-3 px-3 py-2">
+          <User className="h-5 w-5 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Demo Gebruiker</span>
+        </div>
       </div>
     </div>
   );

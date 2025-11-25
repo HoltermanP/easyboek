@@ -12,12 +12,15 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
-  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  password  String?  // Optioneel voor toekomstige implementatie
   role      String   @default("user") // "user" | "admin"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  companies Company[]
+  companies    Company[]
+  subscription Subscription?
 
   @@map("users")
 }
@@ -231,6 +234,25 @@ model TaxRules {
   company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("tax_rules")
+}
+
+model Subscription {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  stripeCustomerId  String?  @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId     String?
+  plan              String   // "basis" | "premium"
+  status            String   // "active" | "canceled" | "past_due" | "trialing" | "incomplete"
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
 }
 
 

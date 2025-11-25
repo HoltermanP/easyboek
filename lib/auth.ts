@@ -1,39 +1,36 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "./prisma";
 
+/**
+ * Simpel auth systeem zonder Clerk
+ * Haal de eerste gebruiker op of maak een demo gebruiker aan
+ */
 export async function getCurrentUser() {
-  const { userId } = await auth();
-  
-  if (!userId) {
+  try {
+    // Haal de eerste gebruiker op, of maak een demo gebruiker aan
+    let user = await prisma.user.findFirst();
+
+    if (!user) {
+      // Maak een demo gebruiker aan
+      user = await prisma.user.create({
+        data: {
+          email: "demo@easyboek.nl",
+          name: "Demo Gebruiker",
+          role: "user",
+        },
+      });
+    }
+
+    return user;
+  } catch (error: any) {
+    console.error("Error in getCurrentUser:", error);
     return null;
   }
-
-  const user = await currentUser();
-  if (!user) {
-    return null;
-  }
-
-  // Sync user with database
-  let dbUser = await prisma.user.findUnique({
-    where: { clerkId: userId },
-  });
-
-  if (!dbUser) {
-    dbUser = await prisma.user.create({
-      data: {
-        clerkId: userId,
-        role: "user",
-      },
-    });
-  }
-
-  return dbUser;
 }
 
 export async function requireAuth() {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error("Unauthorized");
+    throw new Error("Gebruiker niet gevonden");
   }
   return user;
 }
@@ -48,39 +45,39 @@ export async function requireAdmin() {
 
 /**
  * Haal de geselecteerde company op voor de gebruiker
- * Gebruikt cookie of eerste company als fallback
  */
 export async function getSelectedCompany(userId: string) {
-  const { cookies } = await import("next/headers");
-  const cookieStore = await cookies();
-  const selectedCompanyId = cookieStore.get("selectedCompanyId")?.value;
+  try {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const selectedCompanyId = cookieStore.get("selectedCompanyId")?.value;
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: {
-      companies: {
-        orderBy: {
-          year: "desc",
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        companies: {
+          orderBy: {
+            year: "desc",
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!user || user.companies.length === 0) {
+    if (!user || user.companies.length === 0) {
+      return null;
+    }
+
+    if (selectedCompanyId) {
+      const selected = user.companies.find((c) => c.id === selectedCompanyId);
+      if (selected) {
+        return selected;
+      }
+    }
+
+    return user.companies[0];
+  } catch (error) {
+    console.error("Error in getSelectedCompany:", error);
     return null;
   }
-
-  // Als er een geselecteerde company is, gebruik die, anders de eerste
-  if (selectedCompanyId) {
-    const selected = user.companies.find((c) => c.id === selectedCompanyId);
-    if (selected) {
-      return selected;
-    }
-  }
-
-  // Fallback naar eerste company
-  return user.companies[0];
 }
-
-
 

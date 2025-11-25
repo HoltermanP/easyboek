@@ -1,11 +1,11 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateRecurringBookingForm } from "@/components/recurring/CreateRecurringBookingForm";
 
 async function getCompanyAndAccounts(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -39,8 +39,23 @@ async function getCompanyAndAccounts(userId: string) {
 }
 
 export default async function NewRecurringBookingPage() {
-  const user = await requireAuth();
-  const data = await getCompanyAndAccounts(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Nieuwe Herhalende Boeking</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gebruiker niet gevonden</CardTitle>
+            <CardDescription>
+              Er is een probleem opgetreden.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  const data = await getCompanyAndAccounts(user.id);
 
   if (!data) {
     return (
@@ -71,7 +86,7 @@ export default async function NewRecurringBookingPage() {
         companyId={data.company.id}
         costAccounts={data.costAccounts}
         bankAccounts={data.bankAccounts}
-        userId={user.id}
+        userId={user!.id}
       />
     </div>
   );

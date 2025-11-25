@@ -1,5 +1,6 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { MarkInvoicePaidButton } from "@/components/invoices/MarkInvoicePaidButt
 
 async function getInvoice(invoiceId: string, userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: true,
     },
@@ -45,8 +46,11 @@ export default async function InvoiceDetailPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requireAuth();
-  const invoice = await getInvoice(params.id, user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/dashboard");
+  }
+  const invoice = await getInvoice(params.id, user.id);
 
   if (!invoice) {
     return (

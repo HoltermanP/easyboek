@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +8,7 @@ import { LedgerAccountCode } from "@/components/ledger/LedgerAccountCode";
 
 async function getLedgerAccounts(userId: string) {
   const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
+    where: { id: userId },
     include: {
       companies: {
         include: {
@@ -33,8 +33,20 @@ async function getLedgerAccounts(userId: string) {
 }
 
 export default async function LedgerAccountsPage() {
-  const user = await requireAuth();
-  const data = await getLedgerAccounts(user.clerkId);
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Grootboekrekeningen</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gebruiker niet gevonden</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  const data = await getLedgerAccounts(user.id);
 
   if (!data) {
     return (
@@ -48,8 +60,8 @@ export default async function LedgerAccountsPage() {
   
   // Groepeer rekeningen per categorie
   const accountsByCategory = {
-    activa: standardAccounts.filter(a => a.category === "activa"),
-    passiva: standardAccounts.filter(a => a.category === "passiva"),
+    activa: standardAccounts.filter((a: any) => a.category === "activa"),
+    passiva: standardAccounts.filter((a: any) => a.category === "passiva"),
     kosten: standardAccounts.filter(a => a.category === "kosten"),
     opbrengsten: standardAccounts.filter(a => a.category === "opbrengsten"),
   };

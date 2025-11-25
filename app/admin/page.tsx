@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -46,7 +46,15 @@ async function getAdminData() {
 }
 
 export default async function AdminPage() {
-  await requireAdmin();
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Toegang Geweigerd</h1>
+        <p className="text-muted-foreground">Je hebt geen toegang tot deze pagina.</p>
+      </div>
+    );
+  }
   const data = await getAdminData();
 
   return (
@@ -112,7 +120,7 @@ export default async function AdminPage() {
               {data.companies.map((company) => (
                 <TableRow key={company.id}>
                   <TableCell className="font-medium">{company.name}</TableCell>
-                  <TableCell>{company.owner.clerkId}</TableCell>
+                  <TableCell>{company.owner.email || company.owner.name || "-"}</TableCell>
                   <TableCell>{company.kvkNumber || "-"}</TableCell>
                   <TableCell>{company.btwNumber || "-"}</TableCell>
                   <TableCell>{company._count.bookings}</TableCell>
