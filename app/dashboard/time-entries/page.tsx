@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { CreateInvoiceForm } from "@/components/invoices/CreateInvoiceForm";
+import { TimeEntriesClient } from "./TimeEntriesClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const dynamic = 'force-dynamic';
@@ -16,12 +16,6 @@ async function getCompanyAndCustomers(userId: string) {
               name: "asc",
             },
           },
-          invoices: {
-            orderBy: {
-              createdAt: "desc",
-            },
-            take: 1,
-          },
         },
       },
     },
@@ -31,50 +25,36 @@ async function getCompanyAndCustomers(userId: string) {
     return null;
   }
 
-  const company = user.companies[0];
-  const lastInvoice = company.invoices[0];
-  
-  // Genereer volgend factuurnummer
-  let nextNumber = "FAC-001";
-  if (lastInvoice) {
-    const match = lastInvoice.number.match(/FAC-(\d+)/);
-    if (match) {
-      const num = parseInt(match[1], 10) + 1;
-      nextNumber = `FAC-${num.toString().padStart(3, "0")}`;
-    }
-  }
-
   // Converteer Decimal naar number voor hourlyRate
-  const customers = company.customers.map(customer => ({
+  const customers = user.companies[0].customers.map(customer => ({
     id: customer.id,
     name: customer.name,
-    email: customer.email,
     hourlyRate: customer.hourlyRate ? Number(customer.hourlyRate) : null,
   }));
 
   return {
-    company,
+    company: user.companies[0],
     customers,
-    nextInvoiceNumber: nextNumber,
   };
 }
 
-export default async function NewInvoicePage() {
+export default async function TimeEntriesPage() {
   const user = await getCurrentUser();
   if (!user) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Nieuwe Factuur</h1>
+        <h1 className="text-3xl font-bold">Urenregistratie</h1>
         <p className="text-muted-foreground">Gebruiker niet gevonden</p>
       </div>
     );
   }
+
   const data = await getCompanyAndCustomers(user.id);
 
   if (!data) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Nieuwe Factuur</h1>
+        <h1 className="text-3xl font-bold">Urenregistratie</h1>
         <Card>
           <CardHeader>
             <CardTitle>Geen bedrijf gevonden</CardTitle>
@@ -90,18 +70,23 @@ export default async function NewInvoicePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Nieuwe Factuur</h1>
+        <h1 className="text-3xl font-bold">Urenregistratie</h1>
         <p className="text-muted-foreground">
-          Maak een nieuwe factuur aan
+          Registreer uw gewerkte uren per dag en klant
         </p>
       </div>
 
-      <CreateInvoiceForm
+      <TimeEntriesClient
         companyId={data.company.id}
         customers={data.customers}
-        defaultInvoiceNumber={data.nextInvoiceNumber}
       />
     </div>
   );
 }
+
+
+
+
+
+
 

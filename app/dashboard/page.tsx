@@ -2,10 +2,21 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale/nl";
 import { LedgerAccountCode } from "@/components/ledger/LedgerAccountCode";
 import { InvoiceNotifications } from "@/components/dashboard/InvoiceNotifications";
+import { SubscriptionBanner } from "@/components/dashboard/SubscriptionBanner";
+import { getOverdueInvoices, getUpcomingDueInvoices, getTotalOutstanding } from "@/services/notifications/invoices";
+import { calculateMonthlyReservationAdvice, calculateQuarterlyReservationAdvice } from "@/services/tax/reservationAdvice";
+import { calculateProfitAndLoss } from "@/services/reports/reports";
+import { AlertTriangle, TrendingUp, TrendingDown, Info, DollarSign, Calendar, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ReservationAdvice } from "@/components/dashboard/ReservationAdvice";
+import { QuarterlyVatAdvice } from "@/components/dashboard/QuarterlyVatAdvice";
+import { FinancialAdvice } from "@/components/dashboard/FinancialAdvice";
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +31,11 @@ async function getDashboardData(userId: string) {
               include: {
                 debitAccount: true,
                 creditAccount: true,
+              },
+            },
+            invoices: {
+              include: {
+                customer: true,
               },
             },
             documents: true,
@@ -89,10 +105,51 @@ async function getDashboardData(userId: string) {
     return isCostAccount && isInCurrentYear;
   });
   const kostenThisYear = kostenBookingsThisYear.reduce((sum, b) => sum + Number(b.amount), 0);
-  
-  // Alle kosten boekingen (voor debug)
-  const allCostBookings = company.bookings.filter((b) => b.debitAccount.code.startsWith("4"));
-  const allCosts = allCostBookings.reduce((sum, b) => sum + Number(b.amount), 0);
+
+  // Verwachte opbrengsten (openstaande facturen)
+  const outstandingInvoices = company.invoices.filter(
+    (inv) => inv.status === "sent" || inv.status === "draft"
+  );
+  const expectedRevenue = outstandingInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
+
+  // Betaalde facturen deze maand (voor reserveringsadvies)
+  const paidInvoicesThisMonth = company.invoices.filter(
+    (inv) => inv.status === "paid" && 
+    new Date(inv.date) >= startOfMonth && 
+    new Date(inv.date) <= endOfMonth
+  );
+
+  // Haal aandachtspunten op
+  const [overdueInvoices, upcomingInvoices, outstanding] = await Promise.all([
+    getOverdueInvoices(company.id),
+    getUpcomingDueInvoices(company.id, 7),
+    getTotalOutstanding(company.id),
+  ]);
+
+  // Reserveringsadvies (maandelijks)
+  let reservationAdvice = null;
+  try {
+    reservationAdvice = await calculateMonthlyReservationAdvice(company.id);
+  } catch (error) {
+    console.error("Error calculating reservation advice:", error);
+  }
+
+  // Kwartaalgebaseerd BTW reserveringsadvies
+  let quarterlyVatAdvice = null;
+  try {
+    quarterlyVatAdvice = await calculateQuarterlyReservationAdvice(company.id);
+  } catch (error) {
+    console.error("Error calculating quarterly VAT advice:", error);
+  }
+
+  // Bereken winst voor adviezen
+  let profitThisYear = 0;
+  try {
+    const pnl = await calculateProfitAndLoss(company.id, startOfYear, endOfYear);
+    profitThisYear = pnl.profit.total;
+  } catch (error) {
+    console.error("Error calculating profit:", error);
+  }
 
   // Top 5 kosten dit jaar
   const kostenPerRekening = kostenBookingsThisYear.reduce((acc, b) => {
@@ -119,10 +176,15 @@ async function getDashboardData(userId: string) {
     top5Kosten,
     openVatPeriod: company.vatPeriods[0] || null,
     totalDocuments: company.documents.length,
-    allCostBookings,
-    allCosts,
-    kostenBookingsThisMonth,
-    kostenBookingsThisYear,
+    expectedRevenue,
+    outstandingInvoices: outstandingInvoices.length,
+    overdueInvoices,
+    upcomingInvoices,
+    outstanding,
+    reservationAdvice,
+    quarterlyVatAdvice,
+    paidInvoicesThisMonth: paidInvoicesThisMonth.length,
+    profitThisYear,
   };
   } catch (error) {
     console.error("Error in getDashboardData:", error);
@@ -169,6 +231,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <SubscriptionBanner />
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
@@ -176,6 +239,105 @@ export default async function DashboardPage() {
         </p>
       </div>
 
+      {/* Kosten en Opbrengsten - Prominent */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="border-2 border-red-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-600" />
+              Kosten deze maand
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-700">
+              €{data.kostenThisMonth.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Totaal dit jaar: €{data.kostenThisYear.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              Verwachte opbrengsten
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-700">
+              €{data.expectedRevenue.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data.outstandingInvoices} openstaande factuur{data.outstandingInvoices !== 1 ? "en" : ""}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Aandachtspunten */}
+      {(data.overdueInvoices.length > 0 || data.upcomingInvoices.length > 0) && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              Aandachtspunten
+            </CardTitle>
+            <CardDescription>
+              Belangrijke items die uw aandacht vereisen
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {data.overdueInvoices.length > 0 && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Vervallen Facturen</AlertTitle>
+                <AlertDescription>
+                  U heeft {data.overdueInvoices.length} vervallen factuur{data.overdueInvoices.length !== 1 ? "en" : ""} met een totaal bedrag van{" "}
+                  €{data.overdueInvoices.reduce((sum, inv) => sum + Number(inv.total), 0).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </AlertDescription>
+              </Alert>
+            )}
+            {data.upcomingInvoices.length > 0 && (
+              <Alert>
+                <Calendar className="h-4 w-4" />
+                <AlertTitle>Facturen Vervallen Binnenkort</AlertTitle>
+                <AlertDescription>
+                  {data.upcomingInvoices.length} factuur{data.upcomingInvoices.length !== 1 ? "en" : ""} vervalt binnen 7 dagen
+                </AlertDescription>
+              </Alert>
+            )}
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/dashboard/invoices">Bekijk Alle Facturen</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Kwartaalgebaseerd BTW Reserveringsadvies */}
+      {data.quarterlyVatAdvice && (
+        <QuarterlyVatAdvice advice={data.quarterlyVatAdvice} />
+      )}
+
+      {/* Maandelijks reserveringsadvies - alleen tonen bij betaalde facturen */}
+      {data.reservationAdvice && data.paidInvoicesThisMonth > 0 && (
+        <ReservationAdvice 
+          advice={data.reservationAdvice} 
+          paidInvoicesThisMonth={data.paidInvoicesThisMonth}
+        />
+      )}
+
+      {/* Financiële adviezen */}
+      <FinancialAdvice
+        hasOverdueInvoices={data.overdueInvoices.length > 0}
+        hasUpcomingInvoices={data.upcomingInvoices.length > 0}
+        outstandingAmount={data.outstanding.total}
+        profitThisYear={data.profitThisYear}
+        hasOpenVatPeriod={!!data.openVatPeriod}
+      />
+
+      {/* Overige statistieken */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -257,77 +419,12 @@ export default async function DashboardPage() {
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Geen kosten dit jaar</p>
-                {data.company.bookings.length > 0 && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>Totaal boekingen: {data.company.bookings.length}</p>
-                    <p>Kosten boekingen dit jaar: {data.kostenBookingsThisYear.length}</p>
-                    <p>Kosten boekingen deze maand: {data.kostenBookingsThisMonth.length}</p>
-                    <p>Alle kosten boekingen: {data.allCostBookings.length} (totaal: €{data.allCosts.toLocaleString("nl-NL", { minimumFractionDigits: 2 })})</p>
-                  </div>
-                )}
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Debug info - kan later worden verwijderd */}
-      {process.env.NODE_ENV === "development" && (() => {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        startOfMonth.setHours(0, 0, 0, 0);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        endOfMonth.setHours(23, 59, 59, 999);
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        startOfYear.setHours(0, 0, 0, 0);
-        const endOfYear = new Date(now.getFullYear(), 11, 31);
-        endOfYear.setHours(23, 59, 59, 999);
-        
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>Debug Info</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-xs">
-                <p>Huidige maand: {format(startOfMonth, "d MMM", { locale: nl })} - {format(endOfMonth, "d MMM yyyy", { locale: nl })}</p>
-                <p>Huidig jaar: {format(startOfYear, "d MMM yyyy", { locale: nl })} - {format(endOfYear, "d MMM yyyy", { locale: nl })}</p>
-                <p>Totaal boekingen: {data.company.bookings.length}</p>
-                <p>Kosten boekingen dit jaar: {data.kostenBookingsThisYear.length}</p>
-                <p>Kosten boekingen deze maand: {data.kostenBookingsThisMonth.length}</p>
-                <p>Alle kosten boekingen: {data.allCostBookings.length} (totaal: €{data.allCosts.toLocaleString("nl-NL", { minimumFractionDigits: 2 })})</p>
-                {data.company.bookings.length > 0 && (
-                  <div className="mt-4">
-                    <p className="font-medium mb-2">Laatste 3 boekingen:</p>
-                    {data.company.bookings.slice(0, 3).map((b) => {
-                      const bookingDate = new Date(b.date);
-                      bookingDate.setHours(0, 0, 0, 0);
-                      const isInMonth = bookingDate >= startOfMonth && bookingDate <= endOfMonth;
-                      const isInYear = bookingDate >= startOfYear && bookingDate <= endOfYear;
-                      
-                      return (
-                        <div key={b.id} className="border-l-2 pl-2 mb-2">
-                          <p>Datum: {format(b.date, "d MMM yyyy", { locale: nl })}</p>
-                          <p>
-                            Debet: <LedgerAccountCode code={b.debitAccount.code} name={b.debitAccount.name} />
-                          </p>
-                          <p>
-                            Credit: <LedgerAccountCode code={b.creditAccount.code} name={b.creditAccount.name} />
-                          </p>
-                          <p>Bedrag: €{Number(b.amount).toLocaleString("nl-NL", { minimumFractionDigits: 2 })}</p>
-                          <p>Is kosten: {b.debitAccount.code.startsWith("4") ? "Ja" : "Nee"}</p>
-                          <p>In deze maand: {isInMonth ? "Ja" : "Nee"}</p>
-                          <p>In dit jaar: {isInYear ? "Ja" : "Nee"}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
     </div>
   );
   } catch (error) {
