@@ -13,7 +13,8 @@ export default function SignInPage() {
           </p>
         </div>
         <SignIn
-          routing="hash"
+          routing="path"
+          path="/sign-in"
           afterSignInUrl="/dashboard"
           afterSignUpUrl="/onboarding/select-plan"
         />
