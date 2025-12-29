@@ -32,30 +32,31 @@
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* Modern donker thema - niet zwart maar donkergrijs met subtiele accenten */
+    --background: 222 20% 11%;
+    --foreground: 210 20% 98%;
+    --card: 222 20% 14%;
+    --card-foreground: 210 20% 98%;
+    --popover: 222 20% 14%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 222 20% 18%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 222 20% 18%;
+    --muted-foreground: 210 10% 65%;
+    --accent: 222 20% 20%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 222 15% 22%;
+    --input: 222 15% 22%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 60%;
+    --chart-2: 280 70% 65%;
+    --chart-3: 173 58% 45%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 340 75% 60%;
   }
 }
 
@@ -65,6 +66,52 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* Subtiele gradient effecten voor moderne uitstraling */
+  .gradient-border {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: calc(var(--radius) + 2px);
+  }
+  
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: calc(var(--radius) + 2px);
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.2),
+      hsl(var(--primary) / 0.05),
+      transparent
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  
+  /* Moderne shadow effecten */
+  .shadow-modern {
+    box-shadow: 
+      0 1px 3px 0 hsl(var(--foreground) / 0.1),
+      0 1px 2px -1px hsl(var(--foreground) / 0.1);
+  }
+  
+  .shadow-modern-lg {
+    box-shadow: 
+      0 10px 15px -3px hsl(var(--foreground) / 0.1),
+      0 4px 6px -4px hsl(var(--foreground) / 0.1);
+  }
+  
+  /* Glow effect voor accenten */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
   }
 }
 

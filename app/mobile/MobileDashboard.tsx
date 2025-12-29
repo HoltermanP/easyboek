@@ -62,7 +62,7 @@ export function MobileDashboard({ companyId, customers }: MobileDashboardProps) 
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   // Haal overzichtsdata op
   useEffect(() => {

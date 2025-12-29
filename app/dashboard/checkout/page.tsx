@@ -38,7 +38,11 @@ function CheckoutContent() {
         throw new Error(data.error || "Fout bij aanmaken checkout");
       }
 
-      if (data.url) {
+      // Bypass mode: direct doorsturen naar dashboard
+      if (data.bypass) {
+        window.location.href = data.url;
+      } else if (data.url) {
+        // Stripe checkout: doorsturen naar Stripe
         window.location.href = data.url;
       } else {
         throw new Error("Geen checkout URL ontvangen");
@@ -55,13 +59,15 @@ function CheckoutContent() {
     price: "€39,95",
     period: "/maand",
     description: "Volledig ontzorgd met AI en ondersteuning",
-    originalPrice: "€49,95",
+    originalPrice: null,
+    trialInfo: null,
   } : plan === "basis" ? {
     name: "Basis",
     price: "€29,95",
     period: "/maand",
     description: "Voor zelfstandigen die zelf de controle willen houden",
     originalPrice: null,
+    trialInfo: null,
   } : null;
 
   if (!planInfo) {
@@ -99,13 +105,10 @@ function CheckoutContent() {
                 <span className="text-4xl font-bold">{planInfo.price}</span>
                 <span className="text-slate-600">{planInfo.period}</span>
               </div>
-              {planInfo.originalPrice && (
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-sm text-slate-500 line-through">
-                    {planInfo.originalPrice}
-                  </span>
-                  <Badge variant="secondary">
-                    Eerste 6 maanden
+              {planInfo.trialInfo && (
+                <div className="mt-2">
+                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    {planInfo.trialInfo}
                   </Badge>
                 </div>
               )}
@@ -160,18 +163,18 @@ function CheckoutContent() {
             <div className="flex items-start gap-2">
               <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium">Maandelijks verlengd</p>
+                <p className="font-medium">Maandelijks betalen</p>
                 <p className="text-sm text-slate-600">
-                  Je abonnement wordt automatisch maandelijks verlengd
+                  Je betaalt maandelijks, maar hebt een jaarlijks contract
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium">Altijd opzegbaar</p>
+                <p className="font-medium">Jaarlijks contract</p>
                 <p className="text-sm text-slate-600">
-                  Je kunt je abonnement op elk moment opzeggen
+                  Abonnement is voor 12 maanden en niet tussentijds opzegbaar
                 </p>
               </div>
             </div>

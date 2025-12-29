@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { createInvoice } from "@/app/dashboard/invoices/actions";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Clock, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Customer {
   id: string;
   name: string;
   email: string | null;
+  hourlyRate?: number | null;
 }
 
 interface CreateInvoiceFormProps {
@@ -44,12 +46,24 @@ export function CreateInvoiceForm({
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [loadingHours, setLoadingHours] = useState(false);
+  const [invoiceType, setInvoiceType] = useState<"manual" | "hours">("manual");
   const [customerId, setCustomerId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState(defaultInvoiceNumber);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
+  const [hoursStartDate, setHoursStartDate] = useState(() => {
+    // Eerste dag van huidige maand
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+  });
+  const [hoursEndDate, setHoursEndDate] = useState(() => {
+    // Laatste dag van huidige maand
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+  });
   const [vatStandardRate, setVatStandardRate] = useState(21);
   const [vatReducedRate, setVatReducedRate] = useState(9);
   const [vatZeroRate, setVatZeroRate] = useState(0);
@@ -107,6 +121,96 @@ export function CreateInvoiceForm({
     }, 0);
   };
 
+  const loadHours = async () => {
+    if (!customerId) {
+      toast({
+        title: "Fout",
+        description: "Selecteer eerst een klant",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingHours(true);
+    try {
+      const response = await fetch(
+        `/api/time-entries?companyId=${companyId}&customerId=${customerId}&startDate=${hoursStartDate}&endDate=${hoursEndDate}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Fout bij ophalen uren");
+      }
+
+      const data = await response.json();
+      const timeEntries = data.timeEntries.filter((entry: any) => !entry.invoiceId);
+
+      if (timeEntries.length === 0) {
+        toast({
+          title: "Geen uren gevonden",
+          description: "Er zijn geen niet-gefactureerde uren gevonden voor deze periode",
+          variant: "destructive",
+        });
+        setLoadingHours(false);
+        return;
+      }
+
+      // Groepeer uren per dag en bereken totaal
+      const groupedByDate: Record<string, { hours: number; descriptions: string[] }> = {};
+      
+      timeEntries.forEach((entry: any) => {
+        const dateStr = entry.date.split("T")[0];
+        if (!groupedByDate[dateStr]) {
+          groupedByDate[dateStr] = { hours: 0, descriptions: [] };
+        }
+        groupedByDate[dateStr].hours += Number(entry.hours);
+        if (entry.description) {
+          groupedByDate[dateStr].descriptions.push(entry.description);
+        }
+      });
+
+      // Maak factuurregels van de uren
+      const newItems: InvoiceItem[] = [];
+      const selectedCustomer = customers.find((c) => c.id === customerId);
+      
+      Object.entries(groupedByDate).forEach(([dateStr, data]) => {
+        const entry = timeEntries.find((e: any) => e.date.startsWith(dateStr));
+        const hourlyRate = 
+          entry?.hourlyRate || 
+          entry?.customer?.hourlyRate || 
+          selectedCustomer?.hourlyRate || 
+          timeEntries[0]?.customer?.hourlyRate || 
+          0;
+        const dateObj = new Date(dateStr);
+        const dateFormatted = dateObj.toLocaleDateString("nl-NL", {
+          day: "numeric",
+          month: "long",
+        });
+
+        newItems.push({
+          description: `Uren gewerkt op ${dateFormatted}${data.descriptions.length > 0 ? `: ${data.descriptions[0]}` : ""}`,
+          quantity: data.hours,
+          price: hourlyRate,
+          vat: vatStandardRate,
+        });
+      });
+
+      setItems(newItems);
+      toast({
+        title: "Succes",
+        description: `${timeEntries.length} urenregistraties geladen`,
+      });
+    } catch (error) {
+      console.error("Error loading hours:", error);
+      toast({
+        title: "Fout",
+        description: "Kon uren niet ophalen",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingHours(false);
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
@@ -139,6 +243,12 @@ export function CreateInvoiceForm({
     formData.append("items", JSON.stringify(items));
     formData.append("total", calculateTotal().toString());
     formData.append("vatTotal", calculateVatTotal().toString());
+    
+    // Als factuur op basis van uren, voeg periode toe
+    if (invoiceType === "hours" && hoursStartDate && hoursEndDate) {
+      formData.append("hoursStartDate", hoursStartDate);
+      formData.append("hoursEndDate", hoursEndDate);
+    }
 
     const result = await createInvoice(formData);
     setLoading(false);
@@ -160,6 +270,21 @@ export function CreateInvoiceForm({
 
   return (
     <form onSubmit={handleSubmit}>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Factuurtype</CardTitle>
+          <CardDescription>Kies hoe u de factuur wilt aanmaken</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={invoiceType} onValueChange={(value) => setInvoiceType(value as "manual" | "hours")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="manual">Handmatig</TabsTrigger>
+              <TabsTrigger value="hours">Op basis van uren</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -188,6 +313,51 @@ export function CreateInvoiceForm({
                 </SelectContent>
               </Select>
             </div>
+
+            {invoiceType === "hours" && (
+              <div className="space-y-4 p-4 bg-muted rounded-lg">
+                <div className="space-y-2">
+                  <Label>Periode voor uren</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Van</Label>
+                      <Input
+                        type="date"
+                        value={hoursStartDate}
+                        onChange={(e) => setHoursStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Tot</Label>
+                      <Input
+                        type="date"
+                        value={hoursEndDate}
+                        onChange={(e) => setHoursEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={loadHours}
+                  disabled={loadingHours || !customerId}
+                  className="w-full"
+                >
+                  {loadingHours ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Laden...
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="mr-2 h-4 w-4" />
+                      Laad uren voor periode
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="number">Factuurnummer *</Label>
@@ -228,10 +398,21 @@ export function CreateInvoiceForm({
         <Card>
           <CardHeader>
             <CardTitle>Factuurregels</CardTitle>
-            <CardDescription>Voeg regels toe aan de factuur</CardDescription>
+            <CardDescription>
+              {invoiceType === "hours"
+                ? "Uren worden automatisch geladen. U kunt deze nog aanpassen."
+                : "Voeg regels toe aan de factuur"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {items.map((item, index) => (
+            {items.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {invoiceType === "hours"
+                  ? "Selecteer een klant en laad uren om factuurregels te genereren"
+                  : "Voeg een regel toe om te beginnen"}
+              </p>
+            ) : (
+              items.map((item, index) => (
               <div key={index} className="space-y-2 rounded-lg border p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Regel {index + 1}</span>
@@ -330,12 +511,15 @@ export function CreateInvoiceForm({
                   )}
                 </div>
               </div>
-            ))}
+              ))
+            )}
 
-            <Button type="button" variant="outline" onClick={addItem}>
-              <Plus className="mr-2 h-4 w-4" />
-              Regel toevoegen
-            </Button>
+            {invoiceType === "manual" && (
+              <Button type="button" variant="outline" onClick={addItem}>
+                <Plus className="mr-2 h-4 w-4" />
+                Regel toevoegen
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

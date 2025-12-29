@@ -1,87 +1,165 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 
 export function SubscriptionBanner() {
-  const [show, setShow] = useState(false);
-  const [hasSubscription, setHasSubscription] = useState(true);
+  const { user } = useUser();
+  const [subscription, setSubscription] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check subscription status
-    fetch("/api/test/subscription")
+    if (!user) return;
+
+    fetch("/api/subscriptions/status")
       .then((res) => res.json())
       .then((data) => {
-        if (!data.hasSubscription) {
-          setHasSubscription(false);
-          setShow(true);
-        }
+        setSubscription(data.subscription);
+        setLoading(false);
       })
-      .catch(() => {
-        // In development zonder Stripe, toon banner
-        if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-          setHasSubscription(false);
-          setShow(true);
-        }
-      });
-  }, []);
+      .catch(() => setLoading(false));
+  }, [user]);
 
-  if (!show || hasSubscription) {
+  if (loading || !subscription) {
     return null;
   }
 
-  return (
-    <Card className="border-amber-200 bg-amber-50 mb-6">
-      <CardContent className="pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3 flex-1">
-            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-amber-900 mb-1">
-                Geen actief abonnement
-              </h3>
-              <p className="text-sm text-amber-800">
-                {process.env.NODE_ENV === "development" ? (
-                  <>
-                    Maak een test abonnement aan om de applicatie te gebruiken zonder Stripe.
-                  </>
-                ) : (
-                  <>
-                    Sluit een abonnement af om toegang te krijgen tot alle functies.
-                  </>
-                )}
-              </p>
+  // Developer accounts hebben geen banner nodig
+  if (subscription.isDeveloper) {
+    return null;
+  }
+
+  // Check of trial verloopt
+  if (subscription.isTrial && subscription.trialEndsAt) {
+    const now = new Date();
+    const trialEndsAt = new Date(subscription.trialEndsAt);
+    const daysLeft = Math.ceil(
+      (trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (daysLeft <= 0) {
+      // Trial is verlopen
+      return (
+        <Card className="mb-6 border-destructive/50 bg-destructive/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Je gratis proefperiode is verlopen
+            </CardTitle>
+            <CardDescription className="text-destructive/80">
+              Kies wat je wilt doen: stoppen, Basis plan (€29,95/maand) of Premium plan (€39,95/maand)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <Link href="/onboarding/select-plan?action=stop">
+                <Button variant="outline" className="w-full">
+                  Stoppen
+                </Button>
+              </Link>
+              <Link href="/onboarding/select-plan?plan=basis">
+                <Button variant="outline" className="w-full">
+                  Basis (€29,95/maand)
+                </Button>
+              </Link>
+              <Link href="/onboarding/select-plan?plan=premium">
+                <Button className="w-full">
+                  Premium (€39,95/maand)
+                </Button>
+            </Link>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {process.env.NODE_ENV === "development" ? (
-              <Button asChild size="sm" variant="outline">
-                <Link href="/dashboard/test-subscription">
-                  Test Abonnement
-                </Link>
-              </Button>
-            ) : (
-              <Button asChild size="sm">
-                <Link href="/dashboard/checkout?plan=premium">
-                  Abonnement Afsluiten
-                </Link>
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShow(false)}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (daysLeft <= 7) {
+      // Trial verloopt binnenkort
+      return (
+        <Card className="mb-6 border-yellow-500/50 bg-yellow-500/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-500">
+              <AlertTriangle className="w-5 h-5" />
+              Je gratis proefperiode verloopt over {daysLeft} {daysLeft === 1 ? "dag" : "dagen"}
+            </CardTitle>
+            <CardDescription className="text-yellow-500/80">
+              Kies wat je wilt doen na je proefperiode: stoppen, Basis plan (€29,95/maand) of Premium plan (€39,95/maand)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <Link href="/onboarding/select-plan?action=stop">
+                <Button variant="outline" className="w-full">
+                  Stoppen
+                </Button>
+              </Link>
+              <Link href="/onboarding/select-plan?plan=basis">
+                <Button variant="outline" className="w-full">
+                  Basis (€29,95/maand)
+                </Button>
+              </Link>
+              <Link href="/onboarding/select-plan?plan=premium">
+                <Button className="w-full">
+                  Premium (€39,95/maand)
+                </Button>
+            </Link>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Trial is actief
+    return (
+      <Card className="mb-6 border-green-500/50 bg-green-500/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-green-500">
+            <CheckCircle className="w-5 h-5" />
+            Je gratis proefperiode is actief
+          </CardTitle>
+          <CardDescription className="text-green-500/80">
+            Nog {daysLeft} {daysLeft === 1 ? "dag" : "dagen"} over in je gratis proefperiode met alle Premium functies
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-green-500/90 mb-3">
+            Na je proefperiode kun je kiezen: stoppen, Basis plan of Premium plan
+          </p>
+          <Link href="/onboarding/select-plan">
+            <Button variant="outline">Bekijk opties</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Actieve subscription
+  if (subscription.status === "active") {
+    return null; // Geen banner nodig voor actieve subscriptions
+  }
+
+  // Geen actieve subscription
+  return (
+    <Card className="mb-6 border-yellow-500/50 bg-yellow-500/10">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-yellow-500">
+          <AlertTriangle className="w-5 h-5" />
+          Geen actief abonnement
+        </CardTitle>
+        <CardDescription className="text-yellow-500/80">
+          Kies een abonnement om toegang te krijgen
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Link href="/onboarding/select-plan">
+          <Button>Kies een abonnement</Button>
+        </Link>
       </CardContent>
     </Card>
   );
 }
-

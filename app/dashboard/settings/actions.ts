@@ -107,6 +107,7 @@ export async function updateCompany(formData: FormData) {
   const name = formData.get("name") as string;
   const kvkNumber = formData.get("kvkNumber") as string | null;
   const btwNumber = formData.get("btwNumber") as string | null;
+  const hourlyRateStr = formData.get("hourlyRate") as string | null;
 
   if (!companyId || !name) {
     throw new Error("Bedrijfsnaam is verplicht");
@@ -124,6 +125,15 @@ export async function updateCompany(formData: FormData) {
     throw new Error("Bedrijf niet gevonden");
   }
 
+  // Parse hourly rate
+  let hourlyRate: number | null = null;
+  if (hourlyRateStr && hourlyRateStr.trim() !== "") {
+    const parsed = parseFloat(hourlyRateStr);
+    if (!isNaN(parsed) && parsed >= 0) {
+      hourlyRate = parsed;
+    }
+  }
+
   try {
     await prisma.company.update({
       where: { id: companyId },
@@ -131,6 +141,7 @@ export async function updateCompany(formData: FormData) {
         name,
         kvkNumber: kvkNumber || null,
         btwNumber: btwNumber || null,
+        hourlyRate: hourlyRate !== null ? hourlyRate : null,
       },
     });
 
@@ -259,4 +270,108 @@ export async function selectCompany(formData: FormData) {
   revalidatePath("/dashboard/settings");
   
   return { success: true, companyId };
+}
+
+/**
+ * Update gebruikersvoorkeuren voor zichtbare modules
+ */
+export async function updatePreferences(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { error: "Unauthorized" };
+  }
+
+  // Minimaal vereiste modules moeten altijd true zijn
+  const showUploads = true; // Altijd zichtbaar
+  const showTimeEntries = true; // Altijd zichtbaar
+  const showInvoices = true; // Altijd zichtbaar
+  const showMileage = true; // Altijd zichtbaar
+
+  // Optionele modules
+  const showBookings = formData.get("showBookings") === "true";
+  const showCustomers = formData.get("showCustomers") === "true";
+  const showLedgerAccounts = formData.get("showLedgerAccounts") === "true";
+  const showBtw = formData.get("showBtw") === "true";
+  const showReports = formData.get("showReports") === "true";
+  const showRecurring = formData.get("showRecurring") === "true";
+  const showTaxRules = formData.get("showTaxRules") === "true";
+  const showIncomeTax = formData.get("showIncomeTax") === "true";
+
+  try {
+    // Upsert voorkeuren (maak aan als ze niet bestaan, update anders)
+    await prisma.userPreferences.upsert({
+      where: { userId: user.id },
+      create: {
+        userId: user.id,
+        showUploads,
+        showTimeEntries,
+        showInvoices,
+        showMileage,
+        showBookings,
+        showCustomers,
+        showLedgerAccounts,
+        showBtw,
+        showReports,
+        showRecurring,
+        showTaxRules,
+        showIncomeTax,
+      },
+      update: {
+        showUploads,
+        showTimeEntries,
+        showInvoices,
+        showMileage,
+        showBookings,
+        showCustomers,
+        showLedgerAccounts,
+        showBtw,
+        showReports,
+        showRecurring,
+        showTaxRules,
+        showIncomeTax,
+      },
+    });
+
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard");
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating preferences:", error);
+    return { error: "Fout bij bijwerken voorkeuren" };
+  }
+}
+
+/**
+ * Haal gebruikersvoorkeuren op
+ */
+export async function getPreferences() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return null;
+  }
+
+  const preferences = await prisma.userPreferences.findUnique({
+    where: { userId: user.id },
+  });
+
+  // Als er geen voorkeuren zijn, retourneer standaardwaarden
+  if (!preferences) {
+    return {
+      showUploads: true,
+      showTimeEntries: true,
+      showInvoices: true,
+      showMileage: true,
+      showBookings: false,
+      showCustomers: false,
+      showLedgerAccounts: false,
+      showBtw: false,
+      showReports: false,
+      showRecurring: false,
+      showTaxRules: false,
+      showIncomeTax: false,
+    };
+  }
+
+  return preferences;
 }

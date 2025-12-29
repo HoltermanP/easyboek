@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CreateInvoiceForm } from "@/components/invoices/CreateInvoiceForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export const dynamic = 'force-dynamic';
 
@@ -45,12 +46,15 @@ async function getCompanyAndCustomers(userId: string) {
   }
 
   // Converteer Decimal naar number voor hourlyRate
-  const customers = company.customers.map(customer => ({
-    id: customer.id,
-    name: customer.name,
-    email: customer.email,
-    hourlyRate: customer.hourlyRate ? Number(customer.hourlyRate) : null,
-  }));
+  const customers = company.customers.map(customer => {
+    const hourlyRate = (customer as { hourlyRate?: Decimal | null }).hourlyRate;
+    return {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      hourlyRate: hourlyRate ? Number(hourlyRate) : null,
+    };
+  });
 
   return {
     company,

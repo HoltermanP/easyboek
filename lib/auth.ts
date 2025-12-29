@@ -1,24 +1,42 @@
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "./prisma";
 
 /**
- * Simpel auth systeem zonder Clerk
- * Haal de eerste gebruiker op of maak een demo gebruiker aan
+ * Haal de huidige gebruiker op via Clerk en sync met database
  */
 export async function getCurrentUser() {
   try {
-    // Haal de eerste gebruiker op, of maak een demo gebruiker aan
-    let user = await prisma.user.findFirst();
-
-    if (!user) {
-      // Maak een demo gebruiker aan
-      user = await prisma.user.create({
-        data: {
-          email: "demo@easyboek.nl",
-          name: "Demo Gebruiker",
-          role: "user",
-        },
-      });
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return null;
     }
+
+    // Haal Clerk user data op
+    const clerkUser = await currentUser();
+    if (!clerkUser) {
+      return null;
+    }
+
+    // Sync met database
+    const user = await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: {
+        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        name: clerkUser.firstName && clerkUser.lastName
+          ? `${clerkUser.firstName} ${clerkUser.lastName}`
+          : clerkUser.firstName || clerkUser.emailAddresses[0]?.emailAddress || null,
+      },
+      create: {
+        clerkId: userId,
+        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        name: clerkUser.firstName && clerkUser.lastName
+          ? `${clerkUser.firstName} ${clerkUser.lastName}`
+          : clerkUser.firstName || clerkUser.emailAddresses[0]?.emailAddress || null,
+        role: "user",
+        isDeveloper: clerkUser.emailAddresses[0]?.emailAddress?.endsWith("@easyboek.nl") || false,
+      },
+    });
 
     return user;
   } catch (error: any) {
@@ -27,14 +45,20 @@ export async function getCurrentUser() {
   }
 }
 
+/**
+ * Vereis authenticatie - gooit error als niet ingelogd
+ */
 export async function requireAuth() {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error("Gebruiker niet gevonden");
+    throw new Error("Unauthorized: Gebruiker niet gevonden");
   }
   return user;
 }
 
+/**
+ * Vereis admin rechten
+ */
 export async function requireAdmin() {
   const user = await requireAuth();
   if (user.role !== "admin") {
@@ -80,4 +104,3 @@ export async function getSelectedCompany(userId: string) {
     return null;
   }
 }
-

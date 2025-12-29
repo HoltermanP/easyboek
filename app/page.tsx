@@ -8,13 +8,16 @@ import { ReviewsCarousel } from "@/components/reviews/ReviewsCarousel";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="text-2xl font-bold text-slate-900">EasyBoek</div>
+          <div className="text-2xl font-bold text-foreground">EasyBoek</div>
           <div className="flex gap-4">
-            <Link href="/dashboard">
+            <Link href="/sign-in">
+              <Button variant="outline">Inloggen</Button>
+            </Link>
+            <Link href="/sign-up">
               <Button>Start nu</Button>
             </Link>
           </div>
@@ -26,19 +29,19 @@ export default function Home() {
         <Badge className="mb-4" variant="secondary">
           Volledige ontzorging voor ZZP&apos;ers
         </Badge>
-        <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6">
+        <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
           Boekhouden zonder gedoe
           <br />
-          <span className="text-slate-600">Laat AI het werk doen</span>
+          <span className="text-muted-foreground">Laat AI het werk doen</span>
         </h1>
-        <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
           Upload je bonnen en facturen, wij regelen de rest. Automatische boekingen, 
           BTW-berekeningen en belastingaangiftes. Focus op je werk, niet op je administratie.
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/dashboard">
+          <Link href="/sign-up">
             <Button size="lg" className="text-lg px-8">
-              Start nu
+              Start gratis proefperiode
             </Button>
           </Link>
           <Link href="#pricing">
@@ -51,17 +54,17 @@ export default function Home() {
 
       {/* Features Section */}
       <section className="container mx-auto px-4 py-20">
-        <h2 className="text-3xl font-bold text-center mb-12 text-slate-900">
+        <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
           Alles wat je nodig hebt voor je administratie
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardHeader>
-              <FileText className="w-10 h-10 text-blue-600 mb-2" />
+              <FileText className="w-10 h-10 text-blue-500 mb-2" />
               <CardTitle>Automatische verwerking</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-600">
+              <p className="text-muted-foreground">
                 Upload bonnen en facturen, AI verwerkt ze automatisch en koppelt ze aan de juiste categorieën.
               </p>
             </CardContent>
@@ -69,11 +72,11 @@ export default function Home() {
 
           <Card>
             <CardHeader>
-              <Calculator className="w-10 h-10 text-green-600 mb-2" />
+              <Calculator className="w-10 h-10 text-green-500 mb-2" />
               <CardTitle>BTW automatisch</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-600">
+              <p className="text-muted-foreground">
                 Automatische BTW-berekeningen per kwartaal. Altijd klaar voor je belastingaangifte.
               </p>
             </CardContent>
@@ -81,11 +84,11 @@ export default function Home() {
 
           <Card>
             <CardHeader>
-              <Shield className="w-10 h-10 text-purple-600 mb-2" />
+              <Shield className="w-10 h-10 text-purple-500 mb-2" />
               <CardTitle>Volledig grootboek</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-600">
+              <p className="text-muted-foreground">
                 Professioneel double-entry boekhoudsysteem. Altijd inzicht in je financiën.
               </p>
             </CardContent>
@@ -93,11 +96,11 @@ export default function Home() {
 
           <Card>
             <CardHeader>
-              <Clock className="w-10 h-10 text-orange-600 mb-2" />
+              <Clock className="w-10 h-10 text-orange-500 mb-2" />
               <CardTitle>Bespaar tijd</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-600">
+              <p className="text-muted-foreground">
                 Geen uren meer kwijt aan administratie. Focus op wat je het beste doet: je werk.
               </p>
             </CardContent>
@@ -109,10 +112,10 @@ export default function Home() {
       <ReviewsCarousel />
 
       {/* Features Section - Pricing is uitgeschakeld */}
-      <section id="pricing" className="container mx-auto px-4 py-20 bg-slate-50">
+      <section id="pricing" className="container mx-auto px-4 py-20 bg-muted/50">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4 text-slate-900">Gratis te gebruiken</h2>
-          <p className="text-slate-600">Maak een gratis account aan en begin direct</p>
+          <h2 className="text-3xl font-bold mb-4 text-foreground">Gratis te gebruiken</h2>
+          <p className="text-muted-foreground">Maak een gratis account aan en begin direct</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -123,9 +126,9 @@ export default function Home() {
               <CardDescription>Voor zelfstandigen die zelf de controle willen houden</CardDescription>
               <div className="mt-4">
                 <span className="text-4xl font-bold">€29,95</span>
-                <span className="text-slate-600">/maand</span>
+                <span className="text-muted-foreground">/maand</span>
               </div>
-              <p className="text-sm text-slate-500 mt-2">Per jaar afgenomen</p>
+              <p className="text-sm text-muted-foreground mt-2">Per jaar afgenomen</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
@@ -151,16 +154,16 @@ export default function Home() {
                 </li>
                 <Separator className="my-3" />
                 <li className="flex items-start gap-2">
-                  <X className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-slate-500">Handmatige koppeling van boekingen</span>
+                  <X className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">Handmatige koppeling van boekingen</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <X className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-slate-500">Extra checks nodig voor belastingaangiftes</span>
+                  <X className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">Extra checks nodig voor belastingaangiftes</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <X className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-slate-500">Geen AI-ondersteuning</span>
+                  <X className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">Geen AI-ondersteuning</span>
                 </li>
               </ul>
             </CardContent>
@@ -174,30 +177,30 @@ export default function Home() {
           </Card>
 
           {/* Premium Pakket */}
-          <Card className="relative border-2 border-blue-600">
+          <Card className="relative border-2 border-primary">
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <Badge className="bg-blue-600 text-white px-4 py-1">
+              <Badge className="bg-primary text-primary-foreground px-4 py-1">
                 Meest populair
               </Badge>
             </div>
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 Premium
-                <Sparkles className="w-5 h-5 text-blue-600" />
+                <Sparkles className="w-5 h-5 text-primary" />
               </CardTitle>
               <CardDescription>Volledig ontzorgd met AI en ondersteuning</CardDescription>
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold">€39,95</span>
-                  <span className="text-slate-600">/maand</span>
+                  <span className="text-muted-foreground">/maand</span>
                 </div>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-sm text-slate-500 line-through">€49,95</span>
+                  <span className="text-sm text-muted-foreground line-through">€49,95</span>
                   <Badge variant="secondary" className="ml-2">
                     Eerste 6 maanden
                   </Badge>
                 </div>
-                <p className="text-sm text-slate-500 mt-2">Daarna €49,95/maand • Per jaar afgenomen</p>
+                <p className="text-sm text-muted-foreground mt-2">Daarna €49,95/maand • Per jaar afgenomen</p>
               </div>
             </CardHeader>
             <CardContent>
@@ -234,7 +237,7 @@ export default function Home() {
             </CardContent>
             <CardFooter>
               <Link href="/sign-up?plan=premium" className="w-full">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                <Button className="w-full">
                   Kies Premium
                 </Button>
               </Link>
@@ -245,8 +248,8 @@ export default function Home() {
 
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <h2 className="text-3xl font-bold mb-4 text-slate-900">Klaar om te beginnen?</h2>
-        <p className="text-slate-600 mb-8 max-w-xl mx-auto">
+        <h2 className="text-3xl font-bold mb-4 text-foreground">Klaar om te beginnen?</h2>
+        <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
           Start vandaag nog en ervaar hoe eenvoudig boekhouden kan zijn.
         </p>
         <Link href="/dashboard">
@@ -257,32 +260,32 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-slate-50 py-12">
+      <footer className="border-t bg-muted/30 py-12">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8">
             <div>
-              <h3 className="font-bold text-lg mb-4">EasyBoek</h3>
-              <p className="text-slate-600 text-sm">
+              <h3 className="font-bold text-lg mb-4 text-foreground">EasyBoek</h3>
+              <p className="text-muted-foreground text-sm">
                 De eenvoudigste manier om je administratie bij te houden.
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-lg mb-4">Product</h3>
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li><Link href="#pricing" className="hover:text-slate-900">Functies</Link></li>
-                <li><Link href="/dashboard" className="hover:text-slate-900">Start nu</Link></li>
+              <h3 className="font-bold text-lg mb-4 text-foreground">Product</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="#pricing" className="hover:text-foreground transition-colors">Functies</Link></li>
+                <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Start nu</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-bold text-lg mb-4">Support</h3>
-              <ul className="space-y-2 text-sm text-slate-600">
-                <li><Link href="/dashboard" className="hover:text-slate-900">Dashboard</Link></li>
-                <li><Link href="/dashboard/settings" className="hover:text-slate-900">Instellingen</Link></li>
+              <h3 className="font-bold text-lg mb-4 text-foreground">Support</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link></li>
+                <li><Link href="/dashboard/settings" className="hover:text-foreground transition-colors">Instellingen</Link></li>
               </ul>
             </div>
           </div>
           <Separator className="my-8" />
-          <p className="text-center text-sm text-slate-500">
+          <p className="text-center text-sm text-muted-foreground">
             © {new Date().getFullYear()} EasyBoek. Alle rechten voorbehouden.
           </p>
         </div>

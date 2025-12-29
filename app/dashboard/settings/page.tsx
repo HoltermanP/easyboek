@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CreateCompanyDialog } from "@/components/dashboard/CreateCompanyDialog";
-import { updateCompany } from "./actions";
+import { updateCompany, getPreferences } from "./actions";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { cookies } from "next/headers";
 import { SelectCompanyForm } from "@/components/settings/SelectCompanyForm";
+import { PreferencesForm } from "@/components/settings/PreferencesForm";
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,9 @@ export default async function SettingsPage() {
   const cookieStore = await cookies();
   const selectedCompanyId = cookieStore.get("selectedCompanyId")?.value;
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId) || companies[0];
+
+  // Haal voorkeuren op
+  const preferences = await getPreferences();
 
   return (
     <div className="space-y-6 p-6">
@@ -130,11 +134,28 @@ export default async function SettingsPage() {
                   defaultValue={selectedCompany.btwNumber || ""}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="hourlyRate">Uurtarief (€)</Label>
+                <Input
+                  id="hourlyRate"
+                  name="hourlyRate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  defaultValue={selectedCompany.hourlyRate ? selectedCompany.hourlyRate.toString() : ""}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Uw standaard uurtarief voor facturering
+                </p>
+              </div>
               <Button type="submit">Opslaan</Button>
             </form>
           </CardContent>
         </Card>
       )}
+
+      <PreferencesForm initialPreferences={preferences} />
 
       <Card>
         <CardHeader>

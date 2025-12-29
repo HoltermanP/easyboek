@@ -11,6 +11,7 @@ import {
   calculateCashFlow,
   calculateTrends,
 } from "@/services/reports/reports";
+import { calculateIncomeTax } from "@/services/tax/calculateIncomeTax";
 import { ReportsProfitLoss } from "@/components/reports/ReportsProfitLoss";
 import { ReportsBalanceSheet } from "@/components/reports/ReportsBalanceSheet";
 import { ReportsCashFlow } from "@/components/reports/ReportsCashFlow";
@@ -81,12 +82,13 @@ export default async function ReportsPage() {
   endOfMonth.setHours(23, 59, 59, 999);
 
   // Haal rapportages op
-  const [pnlYear, pnlMonth, balanceSheet, cashFlow, trends] = await Promise.all([
+  const [pnlYear, pnlMonth, balanceSheet, cashFlow, trends, incomeTax] = await Promise.all([
     calculateProfitAndLoss(company.id, startOfYear, endOfYear),
     calculateProfitAndLoss(company.id, startOfMonth, endOfMonth),
     calculateBalanceSheet(company.id, now),
     calculateCashFlow(company.id, startOfYear, endOfYear),
     calculateTrends(company.id, 12),
+    calculateIncomeTax(company.id, startOfYear, endOfYear).catch(() => null),
   ]);
 
   return (
@@ -107,7 +109,7 @@ export default async function ReportsPage() {
         </TabsList>
 
         <TabsContent value="pnl" className="space-y-4">
-          <ReportsProfitLoss pnlYear={pnlYear} pnlMonth={pnlMonth} />
+          <ReportsProfitLoss pnlYear={pnlYear} pnlMonth={pnlMonth} incomeTax={incomeTax} />
         </TabsContent>
 
         <TabsContent value="balance" className="space-y-4">

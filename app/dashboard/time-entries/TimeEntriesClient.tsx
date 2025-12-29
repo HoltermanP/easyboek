@@ -96,9 +96,23 @@ export function TimeEntriesClient({ companyId, customers }: TimeEntriesClientPro
 
       setSavedEntries(entriesByDate);
 
+      // Bereken weekDates binnen de callback
+      const getWeekDatesForEntries = () => {
+        const start = new Date(currentWeekStart);
+        start.setHours(0, 0, 0, 0);
+        const dates: Date[] = [];
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(start);
+          date.setDate(start.getDate() + i);
+          dates.push(date);
+        }
+        return dates;
+      };
+      const weekDatesForEntries = getWeekDatesForEntries();
+
       // Initialiseer entries state met bestaande data
       const newEntries: Record<string, TimeEntry[]> = {};
-      weekDates.forEach((date) => {
+      weekDatesForEntries.forEach((date) => {
         const dateStr = date.toISOString().split("T")[0];
         newEntries[dateStr] = entriesByDate[dateStr]?.map((e) => ({
           id: e.id,

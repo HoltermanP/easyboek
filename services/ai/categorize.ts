@@ -40,7 +40,7 @@ BELANGRIJK: Analyseer het document grondig en let op:
 - Productnamen en merken (bijv. "iPhone 15", "MacBook Pro", "Samsung Galaxy", "HP Laptop")
 - Of het om hardware (aanschaf) of abonnementen/diensten gaat
 - De context van het document (aankoopbon, factuur, etc.)
-- category: een duidelijke categorie naam (bijv. "kantoor-kosten", "reis-kosten", "inkomsten", "overige-kosten")
+- category: een duidelijke categorie naam (bijv. "kantoor-kosten", "reis-kosten", "representatie-kosten", "inkomsten", "overige-kosten")
 - suggestedLedger: een grootboekrekening code - KIES DE MEEST SPECIFIEKE CODE uit onderstaande lijst
 - extractedAmount: het TOTAAL bedrag in het document INCL. BTW (als getal, bijv. 123.45). Zoek naar "Totaal", "Totaalbedrag", "Totaal incl. BTW", of het hoogste bedrag als er meerdere zijn. GEEN bedrag als je het niet zeker weet.
 - extractedDate: de datum in het document (format: YYYY-MM-DD)
@@ -73,6 +73,7 @@ REISKOSTEN (46xx):
 - 4650: Vliegtickets - keywords: vliegticket, vliegtuig, vlucht, klm, transavia, easyjet
 - 4660: Hotel & Overnachting - keywords: hotel, overnachting, bnb, booking.com, trivago
 - 4670: Tolwegen - keywords: tol, tolweg, vignet, dartford, tunnel
+- 4680: Representatiekosten - keywords: koffie, lunch, diner, borrel, representatie, representatiekosten, catering, maaltijd, restaurant, café, eten (zakelijk), drinken (zakelijk), business lunch, business dinner, networking, relatiegeschenk
 
 OVERIGE KOSTEN:
 - 4000: Algemene kosten (alleen als niets anders van toepassing is)
@@ -96,6 +97,9 @@ VOORBEELDEN:
 - "BP" + tanken → 4610 (brandstof)
 - "NS" + treinkaartje → 4630 (openbaar vervoer)
 - "Parkeren" → 4620 (parkeren)
+- "Koffie" of "lunch" of "diner" of "borrel" → 4680 (representatiekosten)
+- "Restaurant" + zakelijk → 4680 (representatiekosten)
+- "Café" + zakelijk → 4680 (representatiekosten)
 - "Bol.com" + kantoorartikelen → 4510 (kantoorartikelen)
 - "Microsoft" + software → 4530 (software & licenties)
 - "KPN" + internet → 4540 (internet & telefoon) - alleen voor abonnementen
@@ -131,6 +135,26 @@ BELANGRIJK:
     }
 
     const result = JSON.parse(content);
+
+    // Speciale check voor koffie/lunch - altijd representatiekosten (VOOR validatie)
+    const text = ocrText.toLowerCase();
+    if (text.includes("koffie") || text.includes("lunch") || text.includes("diner") || 
+        text.includes("borrel") || text.includes("representatie") || text.includes("catering") ||
+        (text.includes("restaurant") && (text.includes("zakelijk") || text.includes("business") || text.includes("lunch") || text.includes("diner"))) ||
+        (text.includes("café") && (text.includes("zakelijk") || text.includes("business") || text.includes("koffie")))) {
+      // Forceer representatiekosten
+      return {
+        category: "representatie-kosten",
+        suggestedLedger: 4680,
+        confidence: 0.95,
+        extractedAmount: result.extractedAmount,
+        extractedDate: result.extractedDate,
+        vendor: result.vendor,
+        vatPercentage: result.vatPercentage,
+        vatAmount: result.vatAmount,
+        amountExclVat: result.amountExclVat,
+      };
+    }
 
     // Valideer en normaliseer resultaat
     const category = result.category || "overige-kosten";

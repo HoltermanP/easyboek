@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { stripe } from "@/lib/stripe";
+import { stripe, STRIPE_BYPASS_MODE } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import Stripe from "stripe";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(request: NextRequest) {
+  // Skip webhook processing in bypass mode
+  if (STRIPE_BYPASS_MODE) {
+    console.log("Webhook bypassed - STRIPE_BYPASS_MODE is enabled");
+    return NextResponse.json({ received: true, bypassed: true });
+  }
+
   if (!stripe || !webhookSecret) {
     return NextResponse.json(
       { error: "Stripe is niet geconfigureerd" },
@@ -98,6 +104,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const subscription = await stripe!.subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items.data[0]?.price?.id;
 
+  // Voor jaarlijkse contracten met maandelijkse betalingen: bereken contract einddatum (12 maanden vanaf start)
+  const subscriptionStart = new Date((subscription as any).current_period_start * 1000);
+  const contractEndDate = new Date(subscriptionStart);
+  contractEndDate.setMonth(contractEndDate.getMonth() + 12); // 12 maanden contract
+
+  // Check of dit een trial is
+  const isTrial = subscription.status === "trialing";
+  const trialEndsAt = isTrial && (subscription as any).trial_end 
+    ? new Date((subscription as any).trial_end * 1000)
+    : null;
+
   // Update of maak subscription aan
   await prisma.subscription.upsert({
     where: { userId },
@@ -108,18 +125,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       stripePriceId: priceId || undefined,
       plan: plan as string,
       status: subscription.status,
-      currentPeriodStart: new Date((subscription as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
-      cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
+      isTrial,
+      trialEndsAt,
+      currentPeriodStart: subscriptionStart,
+      currentPeriodEnd: contractEndDate, // Einde van het jaarlijkse contract (12 maanden)
+      cancelAtPeriodEnd: false, // Niet opzegbaar tussentijds
     },
     update: {
       stripeSubscriptionId: subscriptionId,
       stripePriceId: priceId || undefined,
       plan: plan as string,
       status: subscription.status,
-      currentPeriodStart: new Date((subscription as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
-      cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
+      isTrial,
+      trialEndsAt,
+      currentPeriodStart: subscriptionStart,
+      currentPeriodEnd: contractEndDate, // Einde van het jaarlijkse contract (12 maanden)
+      cancelAtPeriodEnd: false, // Niet opzegbaar tussentijds
     },
   });
 }
@@ -136,13 +157,25 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     return;
   }
 
+  // Jaarlijkse contracten met maandelijkse betalingen: behoud contract einddatum
+  // Als de subscription wordt geannuleerd in Stripe, herstel deze (niet opzegbaar tussentijds)
+  const subscriptionStart = new Date((subscription as any).current_period_start * 1000);
+  const contractEndDate = new Date(subscriptionStart);
+  contractEndDate.setMonth(contractEndDate.getMonth() + 12); // 12 maanden contract
+
+  // Als subscription wordt geannuleerd maar contract nog niet verlopen, herstel status
+  let finalStatus = subscription.status;
+  if (subscription.status === "canceled" && new Date() < contractEndDate) {
+    finalStatus = "active"; // Herstel actieve status als contract nog loopt
+  }
+
   await prisma.subscription.update({
     where: { id: dbSubscription.id },
     data: {
-      status: subscription.status,
-      currentPeriodStart: new Date((subscription as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
-      cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false,
+      status: finalStatus,
+      currentPeriodStart: subscriptionStart,
+      currentPeriodEnd: contractEndDate, // Behoud contract einddatum
+      cancelAtPeriodEnd: false, // Jaarlijkse contracten zijn niet opzegbaar
     },
   });
 }

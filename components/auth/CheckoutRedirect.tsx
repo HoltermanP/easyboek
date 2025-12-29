@@ -34,7 +34,11 @@ export function CheckoutRedirect() {
         throw new Error(data.error || "Fout bij aanmaken checkout");
       }
 
-      if (data.url) {
+      // Bypass mode: direct doorsturen naar dashboard
+      if (data.bypass) {
+        window.location.href = data.url;
+      } else if (data.url) {
+        // Stripe checkout: doorsturen naar Stripe
         window.location.href = data.url;
       } else {
         throw new Error("Geen checkout URL ontvangen");

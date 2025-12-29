@@ -23,12 +23,20 @@ interface ProfitAndLossData {
   };
 }
 
+interface IncomeTaxCalculation {
+  finalTaxAmount: number;
+  taxableIncome: number;
+  totalTaxBeforeCredits: number;
+  totalCredits: number;
+}
+
 interface ReportsProfitLossProps {
   pnlYear: ProfitAndLossData;
   pnlMonth: ProfitAndLossData;
+  incomeTax?: IncomeTaxCalculation | null;
 }
 
-export function ReportsProfitLoss({ pnlYear, pnlMonth }: ReportsProfitLossProps) {
+export function ReportsProfitLoss({ pnlYear, pnlMonth, incomeTax }: ReportsProfitLossProps) {
   const formatCurrency = (amount: number) => {
     return `€${amount.toLocaleString("nl-NL", {
       minimumFractionDigits: 2,
@@ -71,6 +79,14 @@ export function ReportsProfitLoss({ pnlYear, pnlMonth }: ReportsProfitLossProps)
                   {formatCurrency(pnlYear.profit.total)}
                 </span>
               </div>
+              {incomeTax && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Inkomstenbelasting (geschat)</span>
+                  <span className="font-medium text-orange-600">
+                    {formatCurrency(incomeTax.finalTaxAmount)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Winstmarge</span>
                 <span>{pnlYear.profit.margin.toFixed(1)}%</span>

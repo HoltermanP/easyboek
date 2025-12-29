@@ -51,6 +51,7 @@ export const STANDARD_LEDGER_ACCOUNTS: LedgerAccountDefinition[] = [
   { code: "4650", name: "Vliegtickets", type: "result", category: "kosten", description: "Vliegtickets zakelijk", keywords: ["vliegticket", "vliegtuig", "vlucht", "klm", "transavia", "easyjet"] },
   { code: "4660", name: "Hotel & Overnachting", type: "result", category: "kosten", description: "Hotel, B&B zakelijk", keywords: ["hotel", "overnachting", "bnb", "booking.com", "trivago"] },
   { code: "4670", name: "Tolwegen", type: "result", category: "kosten", description: "Tolwegen, vignetten", keywords: ["tol", "tolweg", "vignet", "dartford", "tunnel"] },
+  { code: "4680", name: "Representatiekosten", type: "result", category: "kosten", description: "Representatiekosten zoals koffie, lunch, diner, borrel, catering, zakelijke maaltijden", keywords: ["koffie", "lunch", "diner", "borrel", "representatie", "representatiekosten", "catering", "maaltijd", "restaurant", "café", "eten", "drinken", "zakelijk", "business lunch", "business dinner", "networking", "relatiegeschenk"] },
   { code: "4690", name: "Overige algemene kosten", type: "result", category: "kosten", description: "Overige algemene kosten die niet in andere categorieën passen", keywords: ["overig", "algemeen", "diversen", "overige"] },
   
   // Overige kosten (49xx)
@@ -113,6 +114,15 @@ export function findBestLedgerAccount(
       (text.includes("apple") && (text.includes("telefoon") || text.includes("laptop") || text.includes("ipad"))) ||
       (text.includes("samsung") && text.includes("telefoon"))) {
     return STANDARD_LEDGER_ACCOUNTS.find(a => a.code === "4580") || null;
+  }
+  
+  // Representatiekosten (koffie, lunch, etc.) - controleer dit VOOR andere algemene kosten
+  if (text.includes("koffie") || text.includes("lunch") || text.includes("diner") || 
+      text.includes("borrel") || text.includes("representatie") || text.includes("catering") ||
+      text.includes("maaltijd") || text.includes("restaurant") || text.includes("café") ||
+      (text.includes("eten") && text.includes("zakelijk")) || (text.includes("drinken") && text.includes("zakelijk")) ||
+      text.includes("business lunch") || text.includes("business dinner") || text.includes("networking")) {
+    return STANDARD_LEDGER_ACCOUNTS.find(a => a.code === "4680") || null;
   }
   
   if (text.includes("reis") || text.includes("travel") || text.includes("brandstof") || text.includes("shell") || text.includes("bp")) {

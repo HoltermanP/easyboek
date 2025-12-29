@@ -1,25 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, PLANS, PlanType } from "@/lib/stripe";
+import { stripe, PLANS, PlanType, STRIPE_BYPASS_MODE, isStripeEnabled } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { createTestSubscription } from "@/lib/subscription";
 
 export async function POST(request: NextRequest) {
   try {
-    if (!stripe) {
-      return NextResponse.json(
-        { error: "Stripe is niet geconfigureerd. Gebruik de test subscription pagina in development mode." },
-        { status: 503 }
-      );
-    }
 
-    const user = await getCurrentUser();
+    const { userId } = await auth();
     
-    if (!user) {
+    if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
+
+    // Sync gebruiker met database
+    const clerkUser = await currentUser();
+    if (!clerkUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    const user = await prisma.user.upsert({
+      where: { clerkId: userId },
+      update: {},
+      create: {
+        clerkId: userId,
+        email: clerkUser.emailAddresses[0]?.emailAddress || "",
+        name: clerkUser.firstName && clerkUser.lastName
+          ? `${clerkUser.firstName} ${clerkUser.lastName}`
+          : clerkUser.firstName || clerkUser.emailAddresses[0]?.emailAddress || null,
+        role: "user",
+        isDeveloper: clerkUser.emailAddresses[0]?.emailAddress?.endsWith("@easyboek.nl") || false,
+      },
+    });
 
     const body = await request.json();
     const { plan } = body;
@@ -28,6 +46,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Ongeldig abonnement" },
         { status: 400 }
+      );
+    }
+
+    // BYPASS MODE: Maak direct een test subscription aan
+    if (STRIPE_BYPASS_MODE) {
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "Bypass mode is niet toegestaan in productie" },
+          { status: 403 }
+        );
+      }
+
+      await createTestSubscription(user.id, plan as "basis" | "premium");
+      
+      return NextResponse.json({ 
+        sessionId: "bypass_" + Date.now(),
+        url: `${request.nextUrl.origin}/dashboard?bypass=true`,
+        bypass: true,
+      });
+    }
+
+    // NORMALE STRIPE FLOW
+    if (!isStripeEnabled()) {
+      return NextResponse.json(
+        { 
+          error: "Stripe is niet geconfigureerd. Gebruik STRIPE_BYPASS_MODE=true voor testen of configureer Stripe keys.",
+          bypassAvailable: process.env.NODE_ENV !== "production"
+        },
+        { status: 503 }
       );
     }
 
@@ -54,7 +101,7 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = existingSubscription.stripeCustomerId;
     } else {
       // Maak nieuwe Stripe customer
-      const customer = await stripe.customers.create({
+      const customer = await stripe!.customers.create({
         email: customerEmail,
         metadata: {
           userId: user.id,
@@ -63,8 +110,13 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = customer.id;
     }
 
-    // Maak checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Check of gebruiker al een trial heeft gehad (voor premium)
+    const hasExistingSubscription = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+    });
+
+    // Voor premium: voeg trial period toe als gebruiker nog geen subscription heeft gehad
+    const subscriptionData: any = {
       customer: stripeCustomerId,
       payment_method_types: ["card"],
       line_items: [
@@ -80,7 +132,17 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         plan: plan,
       },
-    });
+    };
+
+    // Voeg trial period toe voor premium (alleen als gebruiker nog geen subscription heeft)
+    if (plan === "premium" && planConfig.hasTrial && !hasExistingSubscription) {
+      subscriptionData.subscription_data = {
+        trial_period_days: planConfig.trialPeriodDays || 30,
+      };
+    }
+
+    // Maak checkout session
+    const session = await stripe!.checkout.sessions.create(subscriptionData);
 
     return NextResponse.json({ sessionId: session.id, url: session.url });
   } catch (error: any) {

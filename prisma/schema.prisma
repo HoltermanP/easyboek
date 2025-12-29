@@ -12,15 +12,18 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
+  clerkId   String?  @unique // Clerk user ID
   email     String   @unique
   name      String?
   password  String?  // Optioneel voor toekomstige implementatie
-  role      String   @default("user") // "user" | "admin"
+  role      String   @default("user") // "user" | "admin" | "developer"
+  isDeveloper Boolean @default(false) // Developer accounts hebben gratis toegang
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   companies    Company[]
   subscription Subscription?
+  preferences  UserPreferences?
 
   @@map("users")
 }
@@ -32,6 +35,7 @@ model Company {
   year       Int      @default(2025) // Jaar van de administratie
   kvkNumber  String?
   btwNumber  String?
+  hourlyRate Decimal? @db.Decimal(10, 2) // Uurtarief in euro's
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -44,6 +48,9 @@ model Company {
   ledgerAccounts   LedgerAccount[]
   recurringBookings RecurringBooking[]
   taxRules         TaxRules?
+  incomeTaxData    IncomeTaxData?
+  timeEntries      TimeEntry[]
+  mileageEntries   MileageEntry[]
 
   @@unique([ownerId, year]) // Eén administratie per jaar per gebruiker
   @@map("companies")
@@ -116,11 +123,13 @@ model Customer {
   country     String?  @default("NL")
   kvkNumber   String?
   btwNumber   String?
+  hourlyRate  Decimal? @db.Decimal(10, 2) // Standaard uurtarief voor deze klant
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   invoices    Invoice[]
+  timeEntries TimeEntry[]
 
   @@map("customers")
 }
@@ -151,7 +160,7 @@ model VatPeriod {
   companyId String
   startDate DateTime
   endDate   DateTime
-  status    String   @default("open") // "open" | "ready" | "filed"
+  status    String   @default("open") // "open" | "ready" | "filed" | "reopened"
   vatAmount Decimal? @db.Decimal(10, 2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -242,8 +251,10 @@ model Subscription {
   stripeCustomerId  String?  @unique
   stripeSubscriptionId String? @unique
   stripePriceId     String?
-  plan              String   // "basis" | "premium"
-  status            String   // "active" | "canceled" | "past_due" | "trialing" | "incomplete"
+  plan              String   // "basis" | "premium" | "trial"
+  status            String   // "active" | "canceled" | "past_due" | "trialing" | "incomplete" | "expired"
+  isTrial           Boolean  @default(false) // Proefabonnement
+  trialEndsAt       DateTime? // Wanneer proefperiode eindigt
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
   cancelAtPeriodEnd Boolean  @default(false)
@@ -253,6 +264,111 @@ model Subscription {
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+
+model IncomeTaxData {
+  id              String   @id @default(cuid())
+  companyId       String   @unique
+  year            Int      // Jaar waarop deze gegevens van toepassing zijn
+  
+  // Persoonlijke situatie
+  maritalStatus   String   @default("single") // "single" | "married" | "registered_partnership"
+  
+  // Andere inkomsten (niet uit onderneming)
+  otherIncome     Decimal? @default(0) @db.Decimal(10, 2) // Loon, uitkering, etc.
+  
+  // Aftrekposten
+  mortgageInterest Decimal? @default(0) @db.Decimal(10, 2) // Hypotheekrente
+  healthcareCosts  Decimal? @default(0) @db.Decimal(10, 2) // Zorgkosten
+  educationCosts  Decimal? @default(0) @db.Decimal(10, 2) // Studiekosten
+  otherDeductions  Decimal? @default(0) @db.Decimal(10, 2) // Overige aftrekposten
+  
+  // Partner gegevens (indien van toepassing)
+  partnerIncome   Decimal? @default(0) @db.Decimal(10, 2) // Inkomen partner
+  
+  // Extra informatie (JSON voor flexibiliteit)
+  additionalData  Json? // Voor toekomstige uitbreidingen
+  
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("income_tax_data")
+}
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  companyId   String
+  customerId  String
+  date        DateTime
+  hours       Decimal  @db.Decimal(5, 2) // Aantal uren (bijv. 7.5)
+  description String?  // Optionele omschrijving van het werk
+  hourlyRate  Decimal? @db.Decimal(10, 2) // Uurtarief (optioneel, kan ook per klant worden ingesteld)
+  invoiceId   String?  // ID van factuur als deze uren al gefactureerd zijn
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, date])
+  @@index([companyId, customerId])
+  @@index([invoiceId])
+  @@map("time_entries")
+}
+
+model MileageEntry {
+  id              String   @id @default(cuid())
+  companyId       String
+  date            DateTime
+  kilometers      Decimal  @db.Decimal(8, 2) // Aantal kilometers
+  fromLocation    String?  // Vertrekpunt (optioneel)
+  toLocation      String?  // Bestemming (optioneel)
+  purpose         String?  // Doel van de reis (optioneel)
+  ratePerKm       Decimal? @db.Decimal(5, 2) // Kilometervergoeding per km (bijv. 0.21 voor 21 cent)
+  totalAmount     Decimal? @db.Decimal(10, 2) // Totaalbedrag (kilometers * ratePerKm)
+  isBooked        Boolean  @default(false) // Of deze registratie al geboekt is
+  bookingId       String?  // ID van de bijbehorende boeking (indien geboekt)
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, date])
+  @@index([companyId, isBooked])
+  @@map("mileage_entries")
+}
+
+model UserPreferences {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  
+  // Modules die zichtbaar zijn in de sidebar
+  // Minimaal moeten deze altijd true zijn: uploads, timeEntries, invoices, mileage
+  showUploads          Boolean @default(true)  // Bonnen/Documenten
+  showTimeEntries      Boolean @default(true)  // Uren
+  showInvoices         Boolean @default(true)  // Facturen
+  showMileage          Boolean @default(true)  // Kilometers
+  
+  // Optionele modules
+  showBookings         Boolean @default(false) // Boekingen
+  showCustomers        Boolean @default(false) // Klanten
+  showLedgerAccounts   Boolean @default(false)  // Grootboekrekeningen
+  showBtw              Boolean @default(false)  // BTW
+  showReports          Boolean @default(false) // Rapportages
+  showRecurring        Boolean @default(false) // Herhalende Boekingen
+  showTaxRules         Boolean @default(false) // Belastingregels
+  showIncomeTax        Boolean @default(false) // Inkomstenbelasting
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 

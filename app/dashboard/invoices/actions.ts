@@ -18,6 +18,8 @@ export async function createInvoice(formData: FormData) {
   const itemsJson = formData.get("items") as string;
   const total = formData.get("total") as string;
   const vatTotal = formData.get("vatTotal") as string;
+  const hoursStartDate = formData.get("hoursStartDate") as string | null;
+  const hoursEndDate = formData.get("hoursEndDate") as string | null;
 
   if (!companyId || !customerId || !number || !date || !dueDate) {
     return { error: "Alle verplichte velden moeten worden ingevuld" };
@@ -75,9 +77,21 @@ export async function createInvoice(formData: FormData) {
       parseFloat(vatTotal)
     );
 
+    // Als factuur is aangemaakt op basis van uren, markeer uren als gefactureerd
+    if (hoursStartDate && hoursEndDate) {
+      await markTimeEntriesAsInvoiced(
+        invoice.id,
+        companyId,
+        customerId,
+        new Date(hoursStartDate),
+        new Date(hoursEndDate)
+      );
+    }
+
     revalidatePath("/dashboard/invoices");
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/bookings");
+    revalidatePath("/dashboard/time-entries");
 
     return { success: true, invoice };
   } catch (error) {
@@ -320,6 +334,40 @@ export async function markInvoiceAsPaid(formData: FormData) {
   } catch (error) {
     console.error("Error marking invoice as paid:", error);
     return { error: "Fout bij markeren factuur als betaald" };
+  }
+}
+
+/**
+ * Markeer urenregistraties als gefactureerd
+ */
+async function markTimeEntriesAsInvoiced(
+  invoiceId: string,
+  companyId: string,
+  customerId: string,
+  startDate: Date,
+  endDate: Date
+) {
+  try {
+    // Markeer alle niet-gefactureerde uren voor deze klant in de periode
+    const result = await prisma.timeEntry.updateMany({
+      where: {
+        companyId,
+        customerId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+        invoiceId: null, // Alleen niet-gefactureerde uren
+      },
+      data: {
+        invoiceId,
+      },
+    });
+
+    console.log(`${result.count} urenregistraties gemarkeerd als gefactureerd voor factuur ${invoiceId}`);
+  } catch (error) {
+    console.error("Error marking time entries as invoiced:", error);
+    // Gooi de fout niet door, want de factuur is al aangemaakt
   }
 }
 

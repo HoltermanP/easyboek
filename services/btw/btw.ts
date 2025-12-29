@@ -41,6 +41,12 @@ export async function calculateVatOverview(
   startDate: Date,
   endDate: Date
 ) {
+  // Haal belastingregels op eerst (nodig voor categorisatie)
+  const taxRules = await getCompanyTaxRules(companyId);
+  const standardRate = Number(taxRules.vatStandardRate);
+  const reducedRate = Number(taxRules.vatReducedRate);
+  const zeroRate = Number(taxRules.vatZeroRate);
+
   // Haal facturen op voor omzet BTW (BTW te ontvangen)
   const invoices = await prisma.invoice.findMany({
     where: {
@@ -52,10 +58,45 @@ export async function calculateVatOverview(
     },
   });
 
-  // Bereken omzet belasting (BTW over verkopen) uit facturen
+  // Bereken omzet belasting (BTW over verkopen) uit facturen - per categorie
   let omzetBelasting = 0;
+  let omzetBelastingHoog = 0; // 21% / HOOG
+  let omzetBelastingLaag = 0; // 9% / LAAG
+  let omzetBelastingNul = 0; // 0% / NUL
+  
   for (const invoice of invoices) {
-    omzetBelasting += Number(invoice.vatTotal);
+    const invoiceVatTotal = Number(invoice.vatTotal);
+    omzetBelasting += invoiceVatTotal;
+    
+    // Parse invoice items (JSON) om BTW per categorie te berekenen
+    try {
+      const items = invoice.items as Array<{ description: string; quantity: number; price: number; vat: number }>;
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          const itemVat = item.vat || 0;
+          const itemTotal = item.quantity * item.price;
+          const itemVatAmount = itemTotal * (itemVat / 100);
+          
+          // Categoriseer op basis van BTW percentage
+          if (Math.abs(itemVat - standardRate) < 0.01) {
+            omzetBelastingHoog += itemVatAmount;
+          } else if (Math.abs(itemVat - reducedRate) < 0.01) {
+            omzetBelastingLaag += itemVatAmount;
+          } else if (Math.abs(itemVat - zeroRate) < 0.01 || itemVat === 0) {
+            omzetBelastingNul += itemVatAmount;
+          } else {
+            // Fallback: als percentage niet exact matcht, gebruik standaard
+            omzetBelastingHoog += itemVatAmount;
+          }
+        }
+      } else {
+        // Als items niet parsebaar zijn, verdeel totaal BTW proportioneel (fallback)
+        omzetBelastingHoog += invoiceVatTotal;
+      }
+    } catch (error) {
+      // Fallback: als parsing faalt, tel bij hoog tarief
+      omzetBelastingHoog += invoiceVatTotal;
+    }
   }
 
   // Haal BTW boekingen op rekening 1510 (BTW te vorderen) - dit zijn de voorbelasting boekingen
@@ -75,10 +116,28 @@ export async function calculateVatOverview(
     },
   });
 
-  // Voorbelasting = som van alle BTW boekingen op rekening 1510
+  // Voorbelasting = som van alle BTW boekingen op rekening 1510 - per categorie
   let voorbelasting = 0;
+  let voorbelastingHoog = 0; // 21% / HOOG
+  let voorbelastingLaag = 0; // 9% / LAAG
+  let voorbelastingNul = 0; // 0% / NUL
+  
   for (const booking of vatTeVorderenBookings) {
-    voorbelasting += Number(booking.amount);
+    const bookingAmount = Number(booking.amount);
+    voorbelasting += bookingAmount;
+    
+    // Categoriseer op basis van vatCode
+    const vatCode = booking.vatCode?.toUpperCase() || "";
+    if (vatCode === "HOOG" || vatCode === "21" || vatCode === "21%") {
+      voorbelastingHoog += bookingAmount;
+    } else if (vatCode === "LAAG" || vatCode === "9" || vatCode === "9%") {
+      voorbelastingLaag += bookingAmount;
+    } else if (vatCode === "NUL" || vatCode === "0" || vatCode === "0%") {
+      voorbelastingNul += bookingAmount;
+    } else {
+      // Fallback: als code niet herkend wordt, gebruik hoog tarief
+      voorbelastingHoog += bookingAmount;
+    }
   }
 
   // Haal ook kostenboekingen op met BTW codes (voor overzicht, maar gebruik 1510 boekingen voor berekening)
@@ -105,13 +164,31 @@ export async function calculateVatOverview(
 
   const teBetalen = omzetBelasting - voorbelasting;
 
-  // Haal belastingregels op voor context
-  const taxRules = await getCompanyTaxRules(companyId);
+  // BTW per categorie voor te betalen
+  const teBetalenHoog = omzetBelastingHoog - voorbelastingHoog;
+  const teBetalenLaag = omzetBelastingLaag - voorbelastingLaag;
+  const teBetalenNul = omzetBelastingNul - voorbelastingNul;
 
   return {
     omzetBelasting,
     voorbelasting,
     teBetalen,
+    // BTW per categorie
+    omzetBelastingPerCategorie: {
+      hoog: omzetBelastingHoog,
+      laag: omzetBelastingLaag,
+      nul: omzetBelastingNul,
+    },
+    voorbelastingPerCategorie: {
+      hoog: voorbelastingHoog,
+      laag: voorbelastingLaag,
+      nul: voorbelastingNul,
+    },
+    teBetalenPerCategorie: {
+      hoog: teBetalenHoog,
+      laag: teBetalenLaag,
+      nul: teBetalenNul,
+    },
     invoices,
     costBookings,
     vatTeVorderenBookings, // BTW boekingen voor voorbelasting
