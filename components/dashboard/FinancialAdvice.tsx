@@ -156,7 +156,7 @@ export function FinancialAdvice({
 
         {/* Algemene tips sectie */}
         <div className="pt-4 border-t border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Algemene tips voor ZZP'ers:</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Algemene tips voor ZZP&apos;ers:</h3>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-start gap-2">
               <span className="text-purple-600 mt-1">•</span>

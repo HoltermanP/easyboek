@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,12 +46,7 @@ export function MobileDashboard({ companyId, customers }: MobileDashboardProps) 
   const [submittingTime, setSubmittingTime] = useState(false);
   const { toast } = useToast();
 
-  // Haal overzichtsdata op
-  useEffect(() => {
-    fetchOverview();
-  }, []);
-
-  const fetchOverview = async () => {
+  const fetchOverview = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch("/api/mobile/overview");
@@ -67,7 +62,12 @@ export function MobileDashboard({ companyId, customers }: MobileDashboardProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Haal overzichtsdata op
+  useEffect(() => {
+    fetchOverview();
+  }, [fetchOverview]);
 
   // Camera/upload handler
   const handleCameraClick = () => {

@@ -46,7 +46,7 @@ export function QuarterlyVatAdvice({ advice }: QuarterlyVatAdviceProps) {
           <AlertTitle>Wat betekent dit?</AlertTitle>
           <AlertDescription className="space-y-2">
             <p>
-              Als ZZP'er moet u BTW betalen over uw verkopen. Het is verstandig om dit bedrag 
+              Als ZZP&apos;er moet u BTW betalen over uw verkopen. Het is verstandig om dit bedrag 
               apart te reserveren op een spaarrekening, zodat u altijd genoeg geld heeft om uw 
               BTW-aangifte te betalen.
             </p>

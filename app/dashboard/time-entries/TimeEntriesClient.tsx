@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -68,12 +68,7 @@ export function TimeEntriesClient({ companyId, customers }: TimeEntriesClientPro
 
   const weekDates = getWeekDates();
 
-  // Laad uren voor de huidige week
-  useEffect(() => {
-    loadTimeEntries();
-  }, [currentWeekStart, companyId]);
-
-  const loadTimeEntries = async () => {
+  const loadTimeEntries = useCallback(async () => {
     setLoading(true);
     try {
       const weekEnd = new Date(currentWeekStart);
@@ -126,7 +121,12 @@ export function TimeEntriesClient({ companyId, customers }: TimeEntriesClientPro
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWeekStart, companyId, toast]);
+
+  // Laad uren voor de huidige week
+  useEffect(() => {
+    loadTimeEntries();
+  }, [loadTimeEntries]);
 
   const loadDefaults = async () => {
     setLoadingDefaults(true);
